@@ -4,15 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	lib "github.com/sebrandon1/go-skylight/lib"
 )
 
 // Generate interactively prompts the user for configuration values and writes
-// a config.yaml file to the given path. It authenticates with the Skylight API
-// to auto-discover available frames.
+// a config.yaml file to the given path. If the file already exists, it opens
+// it in the user's editor instead.
 func Generate(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return openInEditor(path)
+	}
+
 	r := bufio.NewReader(os.Stdin)
 
 	fmt.Println("skylight-bridge config generator")
@@ -194,6 +199,19 @@ func discoverFrame(r *bufio.Reader, authMethod, email, password, userID, token s
 		idx = 1
 	}
 	return frames[idx-1].ID, nil
+}
+
+func openInEditor(path string) error {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+	fmt.Printf("Config file %s already exists, opening in %s...\n", path, editor)
+	cmd := exec.Command(editor, path) //nolint:gosec // $EDITOR is trusted user input
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func prompt(r *bufio.Reader, label, defaultVal string) string {
