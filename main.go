@@ -82,6 +82,7 @@ func main() {
 		"log":           action.NewLogAction,
 		"webhook":       action.NewWebhookAction,
 		"homeassistant": action.NewHomeAssistantAction,
+		"discord":       action.NewDiscordAction,
 	}
 	rulesEngine, err := rules.NewEngine(cfg.Rules, factories, logger)
 	if err != nil {

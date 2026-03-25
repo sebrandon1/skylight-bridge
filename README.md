@@ -68,6 +68,19 @@ actions:
       body_template: '{"kid": "{{.child_name}}"}'  # optional, default: full event JSON
 ```
 
+### `discord`
+Posts messages to a Discord channel via webhook.
+
+```yaml
+actions:
+  - type: discord
+    config:
+      webhook_url: "https://discord.com/api/webhooks/1234/abcd"
+      message: "{{.assignee_name}} completed **{{.chore_title}}"  # optional Go template
+```
+
+If no `message` template is provided, a default human-readable message is generated based on the event type.
+
 ### `homeassistant`
 Calls a Home Assistant service or webhook.
 

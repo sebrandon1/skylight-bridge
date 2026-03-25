@@ -43,6 +43,9 @@ action/
   log_test.go
   webhook.go            # Webhook action (POST JSON to URL)
   webhook_test.go
+  discord.go            # Discord webhook action
+  discord_test.go
+  webhook_test.go
   homeassistant.go      # Home Assistant service call / webhook
   homeassistant_test.go
 rules/
