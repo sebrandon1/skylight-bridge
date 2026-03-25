@@ -81,6 +81,19 @@ actions:
 
 If no `message` template is provided, a default human-readable message is generated based on the event type.
 
+### `slack`
+Posts messages to a Slack channel via incoming webhook.
+
+```yaml
+actions:
+  - type: slack
+    config:
+      webhook_url: "https://hooks.slack.com/services/T.../B.../xxx"
+      message: "{{.assignee_name}} completed *{{.chore_title}}*"  # optional Go template
+```
+
+If no `message` template is provided, a default human-readable message is generated based on the event type.
+
 ### `homeassistant`
 Calls a Home Assistant service or webhook.
 

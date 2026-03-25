@@ -77,6 +77,11 @@ func Generate(path string, force bool) error {
 	discordURL := prompt(r, "Discord webhook URL (leave blank to skip)", "")
 
 	fmt.Println()
+	fmt.Println("Slack (optional)")
+	fmt.Println("-----------------")
+	slackURL := prompt(r, "Slack webhook URL (leave blank to skip)", "")
+
+	fmt.Println()
 	fmt.Println("Home Assistant (optional)")
 	fmt.Println("-------------------------")
 	haURL := prompt(r, "Home Assistant URL (leave blank to skip)", "")
@@ -136,6 +141,32 @@ func Generate(path string, force bool) error {
 		fmt.Fprintf(&b, "      - type: discord\n")
 		fmt.Fprintf(&b, "        config:\n")
 		fmt.Fprintf(&b, "          webhook_url: %q\n\n", discordURL)
+	}
+
+	if slackURL != "" {
+		fmt.Fprintf(&b, "  # Post chore completions to Slack.\n")
+		fmt.Fprintf(&b, "  - name: slack-chore-completed\n")
+		fmt.Fprintf(&b, "    event: chore.completed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: slack\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", slackURL)
+
+		fmt.Fprintf(&b, "  # Post reward redemptions to Slack.\n")
+		fmt.Fprintf(&b, "  - name: slack-reward-redeemed\n")
+		fmt.Fprintf(&b, "    event: reward.redeemed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: slack\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", slackURL)
+
+		fmt.Fprintf(&b, "  # Post to Slack when a kid finishes all chores.\n")
+		fmt.Fprintf(&b, "  - name: slack-all-chores-done\n")
+		fmt.Fprintf(&b, "    event: chore.all_completed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: slack\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", slackURL)
 	}
 
 	if haURL != "" {
