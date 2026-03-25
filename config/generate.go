@@ -65,6 +65,11 @@ func Generate(path string) error {
 	stateFile := prompt(r, "State file path", "/data/state.json")
 
 	fmt.Println()
+	fmt.Println("Discord (optional)")
+	fmt.Println("-------------------")
+	discordURL := prompt(r, "Discord webhook URL (leave blank to skip)", "")
+
+	fmt.Println()
 	fmt.Println("Home Assistant (optional)")
 	fmt.Println("-------------------------")
 	haURL := prompt(r, "Home Assistant URL (leave blank to skip)", "")
@@ -99,6 +104,32 @@ func Generate(path string) error {
 	fmt.Fprintf(&b, "    event: reward.redeemed\n")
 	fmt.Fprintf(&b, "    actions:\n")
 	fmt.Fprintf(&b, "      - type: log\n\n")
+
+	if discordURL != "" {
+		fmt.Fprintf(&b, "  # Post chore completions to Discord.\n")
+		fmt.Fprintf(&b, "  - name: discord-chore-completed\n")
+		fmt.Fprintf(&b, "    event: chore.completed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: discord\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", discordURL)
+
+		fmt.Fprintf(&b, "  # Post reward redemptions to Discord.\n")
+		fmt.Fprintf(&b, "  - name: discord-reward-redeemed\n")
+		fmt.Fprintf(&b, "    event: reward.redeemed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: discord\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", discordURL)
+
+		fmt.Fprintf(&b, "  # Post to Discord when a kid finishes all chores.\n")
+		fmt.Fprintf(&b, "  - name: discord-all-chores-done\n")
+		fmt.Fprintf(&b, "    event: chore.all_completed\n")
+		fmt.Fprintf(&b, "    actions:\n")
+		fmt.Fprintf(&b, "      - type: discord\n")
+		fmt.Fprintf(&b, "        config:\n")
+		fmt.Fprintf(&b, "          webhook_url: %q\n\n", discordURL)
+	}
 
 	if haURL != "" {
 		fmt.Fprintf(&b, "  # Flash lights when a kid finishes all daily chores.\n")
