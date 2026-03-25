@@ -3,7 +3,7 @@ module github.com/sebrandon1/skylight-bridge
 go 1.26.1
 
 require (
-	github.com/sebrandon1/go-skylight v0.0.14
+	github.com/sebrandon1/go-skylight v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
