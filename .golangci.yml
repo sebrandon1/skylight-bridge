@@ -1,0 +1,57 @@
+version: "2"
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - ineffassign
+    - misspell
+    - revive
+    - staticcheck
+    - unparam
+  settings:
+    gocyclo:
+      min-complexity: 15
+    misspell:
+      locale: US
+    gosec:
+      excludes:
+        - G704
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test.go
+      - linters:
+          - goconst
+        path: _test.go
+      - linters:
+          - gocyclo
+        path: _test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - ^examples/
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

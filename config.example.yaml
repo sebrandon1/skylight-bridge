@@ -1,0 +1,81 @@
+# skylight-bridge configuration
+#
+# Authentication: provide either email+password OR user_id+token.
+auth:
+  email: "your-email@example.com"
+  password: "your-password"
+  # user_id: "your-user-id"
+  # token: "your-api-token"
+
+# The Skylight frame to monitor.
+frame_id: "your-frame-id"
+
+# How often to poll the Skylight API for changes.
+polling:
+  interval: 30s
+
+# Where to persist state between restarts (default: ~/.skylight-bridge/state.json).
+# state_file: "~/.skylight-bridge/state.json"
+
+# Built-in HTTP server for event history and health checks.
+server:
+  addr: ":8080"
+  event_buffer_size: 100
+
+# Logging configuration.
+log:
+  level: "info"     # debug, info, warn, error
+  format: "json"    # json or text
+
+# Rules define what happens when events are detected.
+rules:
+  # Log all chore completions.
+  - name: "log-chore-completed"
+    event: "chore.completed"
+    actions:
+      - type: log
+        config:
+          message: "{{.assignee_name}} completed {{.chore_title}}"
+
+  # Flash lights when a kid finishes all daily chores.
+  - name: "all-chores-flash-lights"
+    event: "chore.all_completed"
+    # filters:
+    #   assignee_name: "Alice"    # Optional: only match a specific kid
+    actions:
+      - type: homeassistant
+        config:
+          url: "http://homeassistant.local:8123"
+          token: "YOUR_HA_LONG_LIVED_ACCESS_TOKEN"
+          service: "light.turn_on"
+          entity_id: "light.living_room"
+
+  # Fire a webhook when a specific reward is redeemed.
+  - name: "invest-in-voo"
+    event: "reward.redeemed"
+    filters:
+      reward_title: "Invest $20 in VOO"
+    actions:
+      - type: webhook
+        config:
+          url: "https://your-app.example.com/invest"
+          method: "POST"
+          headers:
+            Authorization: "Bearer your-api-key"
+          # Optional: custom body template (default: full event JSON)
+          # body_template: '{"ticker": "VOO", "amount": 20, "kid": "{{.child_name}}"}'
+
+  # Log all reward redemptions.
+  - name: "log-redemptions"
+    event: "reward.redeemed"
+    actions:
+      - type: log
+
+  # Send chore.all_completed to a Home Assistant webhook automation.
+  # - name: "ha-webhook-example"
+  #   event: "chore.all_completed"
+  #   actions:
+  #     - type: homeassistant
+  #       config:
+  #         url: "http://homeassistant.local:8123"
+  #         webhook_id: "skylight-all-chores-done"
