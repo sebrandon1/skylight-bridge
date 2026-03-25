@@ -26,15 +26,25 @@ var Version = "dev"
 
 func main() {
 	var (
-		configPath  string
-		showVersion bool
+		configPath     string
+		showVersion    bool
+		generateConfig bool
 	)
 	flag.StringVar(&configPath, "config", "config.yaml", "path to config file")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
+	flag.BoolVar(&generateConfig, "generate-config", false, "interactively generate a config file")
 	flag.Parse()
 
 	if showVersion {
 		fmt.Println(Version)
+		os.Exit(0)
+	}
+
+	if generateConfig {
+		if err := config.Generate(configPath); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 

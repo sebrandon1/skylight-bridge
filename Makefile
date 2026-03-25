@@ -17,6 +17,9 @@ test:
 clean:
 	rm -f $(APP_NAME)
 
+generate-config: build
+	./$(APP_NAME) --generate-config
+
 docker-build:
 	docker build --build-arg VERSION=$(VERSION) -t $(APP_NAME):dev .
 
@@ -26,4 +29,4 @@ docker-run:
 		-v skylight-bridge-data:/data \
 		$(APP_NAME):dev
 
-.PHONY: vet build lint test clean docker-build docker-run
+.PHONY: vet build lint test clean generate-config docker-build docker-run

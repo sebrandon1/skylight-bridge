@@ -10,10 +10,16 @@ Event-driven bridge for [Skylight Calendar](https://www.ourskylight.com/). Polls
 
 ## Quick Start
 
-1. Copy and edit the example config:
+1. Generate a config interactively:
+   ```bash
+   make generate-config
+   # Or: ./skylight-bridge --generate-config
+   ```
+   This walks you through entering your Skylight credentials, frame ID, polling interval, and optional Home Assistant settings, then writes `config.yaml`.
+
+   Alternatively, copy and edit the example:
    ```bash
    cp config.example.yaml config.yaml
-   # Edit config.yaml with your Skylight credentials and rules
    ```
 
 2. Build and run:
