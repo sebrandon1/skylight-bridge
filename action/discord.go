@@ -88,6 +88,9 @@ func formatDefaultMessage(event engine.Event) string {
 	case engine.EventChoreCompleted:
 		return fmt.Sprintf("**%s** completed **%s**",
 			event.Data["assignee_name"], event.Data["chore_title"])
+	case engine.EventChoreUncompleted:
+		return fmt.Sprintf("**%s** unchecked **%s**",
+			event.Data["assignee_name"], event.Data["chore_title"])
 	case engine.EventChoreAllCompleted:
 		return fmt.Sprintf("**%s** finished all chores for today! (%v chores, %v points)",
 			event.Data["assignee_name"], event.Data["chore_count"], event.Data["total_points"])

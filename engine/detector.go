@@ -94,23 +94,7 @@ func (d *Detector) DetectChores(chores []lib.Chore, today string) []Event {
 	assignees := make(map[string]*assigneeStats)
 
 	for _, c := range chores {
-		prevStatus, known := d.choreStatuses[c.ID]
-
-		// Detect individual chore completion.
-		if c.Status != statusPending && (!known || prevStatus == statusPending) {
-			events = append(events, Event{
-				Type:      EventChoreCompleted,
-				Timestamp: now,
-				Data: map[string]any{
-					"chore_id":      c.ID,
-					"chore_title":   c.Title,
-					"assignee_id":   c.AssigneeID,
-					"assignee_name": d.childNames[c.AssigneeID],
-					"points":        c.Points,
-					"due_date":      c.DueDate,
-				},
-			})
-		}
+		events = append(events, d.detectChoreChange(c, now)...)
 
 		// Update stored status.
 		d.choreStatuses[c.ID] = c.Status
@@ -154,6 +138,30 @@ func (d *Detector) DetectChores(chores []lib.Chore, today string) []Event {
 	}
 
 	return events
+}
+
+func (d *Detector) detectChoreChange(c lib.Chore, now time.Time) []Event {
+	prevStatus, known := d.choreStatuses[c.ID]
+	data := map[string]any{
+		"chore_id":      c.ID,
+		"chore_title":   c.Title,
+		"assignee_id":   c.AssigneeID,
+		"assignee_name": d.childNames[c.AssigneeID],
+		"points":        c.Points,
+		"due_date":      c.DueDate,
+	}
+
+	// Completed: pending → non-pending (or first seen as non-pending).
+	if c.Status != statusPending && (!known || prevStatus == statusPending) {
+		return []Event{{Type: EventChoreCompleted, Timestamp: now, Data: data}}
+	}
+
+	// Uncompleted: non-pending → pending.
+	if c.Status == statusPending && known && prevStatus != statusPending {
+		return []Event{{Type: EventChoreUncompleted, Timestamp: now, Data: data}}
+	}
+
+	return nil
 }
 
 // DetectRewards compares new reward state against previous and returns events.

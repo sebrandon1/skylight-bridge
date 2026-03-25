@@ -51,6 +51,34 @@ func TestDetectChoreCompletedNoDuplicate(t *testing.T) {
 	}
 }
 
+func TestDetectChoreUncompleted(t *testing.T) {
+	d := NewDetector()
+	d.SetChildNames(map[string]string{"cat1": "Alice"})
+
+	// First poll: chore completed.
+	chores := []lib.Chore{
+		{ID: "c1", Title: "Clean room", Status: "completed", AssigneeID: "cat1", DueDate: "2026-03-25"},
+	}
+	d.DetectChores(chores, "2026-03-25")
+
+	// Second poll: chore unchecked back to pending.
+	chores[0].Status = "pending"
+	events := d.DetectChores(chores, "2026-03-25")
+
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Type != EventChoreUncompleted {
+		t.Errorf("type = %q, want chore.uncompleted", events[0].Type)
+	}
+	if events[0].Data["chore_title"] != "Clean room" {
+		t.Errorf("chore_title = %v, want Clean room", events[0].Data["chore_title"])
+	}
+	if events[0].Data["assignee_name"] != "Alice" {
+		t.Errorf("assignee_name = %v, want Alice", events[0].Data["assignee_name"])
+	}
+}
+
 func TestDetectChoreAllCompleted(t *testing.T) {
 	d := NewDetector()
 	d.SetChildNames(map[string]string{"cat1": "Bob"})

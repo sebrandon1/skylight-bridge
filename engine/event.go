@@ -7,6 +7,7 @@ type EventType string
 
 const (
 	EventChoreCompleted    EventType = "chore.completed"
+	EventChoreUncompleted  EventType = "chore.uncompleted"
 	EventChoreAllCompleted EventType = "chore.all_completed"
 	EventRewardRedeemed    EventType = "reward.redeemed"
 )
