@@ -13,9 +13,11 @@ import (
 // Generate interactively prompts the user for configuration values and writes
 // a config.yaml file to the given path. If the file already exists, it opens
 // it in the user's editor instead.
-func Generate(path string) error {
-	if _, err := os.Stat(path); err == nil {
-		return openInEditor(path)
+func Generate(path string, force bool) error {
+	if !force {
+		if _, err := os.Stat(path); err == nil {
+			return openInEditor(path)
+		}
 	}
 
 	r := bufio.NewReader(os.Stdin)

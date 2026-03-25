@@ -18,7 +18,7 @@ clean:
 	rm -f $(APP_NAME)
 
 generate-config: build
-	./$(APP_NAME) --generate-config
+	./$(APP_NAME) --generate-config $(ARGS)
 
 docker-build:
 	docker build --build-arg VERSION=$(VERSION) -t $(APP_NAME):dev .

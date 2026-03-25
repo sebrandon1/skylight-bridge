@@ -29,10 +29,12 @@ func main() {
 		configPath     string
 		showVersion    bool
 		generateConfig bool
+		forceGenerate  bool
 	)
 	flag.StringVar(&configPath, "config", "config.yaml", "path to config file")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.BoolVar(&generateConfig, "generate-config", false, "interactively generate a config file")
+	flag.BoolVar(&forceGenerate, "force", false, "force regenerate config even if it exists")
 	flag.Parse()
 
 	if showVersion {
@@ -41,7 +43,7 @@ func main() {
 	}
 
 	if generateConfig {
-		if err := config.Generate(configPath); err != nil {
+		if err := config.Generate(configPath, forceGenerate); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
