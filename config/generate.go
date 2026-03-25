@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	lib "github.com/sebrandon1/go-skylight/lib"
 )
 
 // Generate interactively prompts the user for configuration values and writes
-// a config.yaml file to the given path.
+// a config.yaml file to the given path. It authenticates with the Skylight API
+// to auto-discover available frames.
 func Generate(path string) error {
 	r := bufio.NewReader(os.Stdin)
 
@@ -22,20 +25,29 @@ func Generate(path string) error {
 	authMethod := prompt(r, "Auth method (email or token)", "email")
 
 	var authBlock string
+	var email, password, userID, token string
+
 	if authMethod == "token" {
-		userID := prompt(r, "User ID", "")
-		token := prompt(r, "API Token", "")
+		userID = prompt(r, "User ID", "")
+		token = prompt(r, "API Token", "")
 		authBlock = fmt.Sprintf("auth:\n  user_id: %q\n  token: %q", userID, token)
 	} else {
-		email := prompt(r, "Email", "")
-		password := prompt(r, "Password", "")
+		email = prompt(r, "Email", "")
+		password = prompt(r, "Password", "")
 		authBlock = fmt.Sprintf("auth:\n  email: %q\n  password: %q", email, password)
 	}
 
+	// Authenticate and discover frames.
 	fmt.Println()
-	fmt.Println("Frame")
-	fmt.Println("-----")
-	frameID := prompt(r, "Frame ID", "")
+	fmt.Println("Connecting to Skylight API...")
+	frameID, err := discoverFrame(r, authMethod, email, password, userID, token)
+	if err != nil {
+		fmt.Printf("  Could not auto-discover frames: %v\n", err)
+		fmt.Println()
+		fmt.Println("Frame")
+		fmt.Println("-----")
+		frameID = prompt(r, "Frame ID (enter manually)", "")
+	}
 
 	fmt.Println()
 	fmt.Println("Polling")
@@ -110,6 +122,47 @@ func Generate(path string) error {
 	fmt.Printf("Config written to %s\n", path)
 	fmt.Println("Edit the file to add or modify rules, then run skylight-bridge.")
 	return nil
+}
+
+func discoverFrame(r *bufio.Reader, authMethod, email, password, userID, token string) (string, error) {
+	var client *lib.Client
+	var err error
+
+	if authMethod == "token" {
+		client, err = lib.NewClientWithToken(userID, token)
+	} else {
+		client, err = lib.NewClient(email, password)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	frames, err := client.ListFrames()
+	if err != nil {
+		return "", err
+	}
+
+	if len(frames) == 0 {
+		return "", fmt.Errorf("no frames found for this account")
+	}
+
+	if len(frames) == 1 {
+		fmt.Printf("  Found frame: %s (%s)\n", frames[0].Name, frames[0].ID)
+		return frames[0].ID, nil
+	}
+
+	// Multiple frames — let the user pick.
+	fmt.Printf("  Found %d frames:\n", len(frames))
+	for i, f := range frames {
+		fmt.Printf("    %d) %s (%s)\n", i+1, f.Name, f.ID)
+	}
+	choice := prompt(r, fmt.Sprintf("Select frame (1-%d)", len(frames)), "1")
+
+	var idx int
+	if _, err := fmt.Sscanf(choice, "%d", &idx); err != nil || idx < 1 || idx > len(frames) {
+		idx = 1
+	}
+	return frames[idx-1].ID, nil
 }
 
 func prompt(r *bufio.Reader, label, defaultVal string) string {
