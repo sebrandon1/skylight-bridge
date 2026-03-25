@@ -101,7 +101,8 @@ func (p *Poller) poll(ctx context.Context) {
 	go func() {
 		defer wg.Done()
 		chores, choreErr = p.client.ListChores(p.frameID, lib.ChoreListOptions{
-			Date:        today,
+			After:       today,
+			Before:      today,
 			IncludeLate: true,
 		})
 	}()
