@@ -1,0 +1,8 @@
+skylight-bridge
+bin/
+coverage.out
+config.yaml
+*.json
+!config.example.yaml
+.git
+.github

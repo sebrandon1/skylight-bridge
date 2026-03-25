@@ -17,4 +17,13 @@ test:
 clean:
 	rm -f $(APP_NAME)
 
-.PHONY: vet build lint test clean
+docker-build:
+	docker build --build-arg VERSION=$(VERSION) -t $(APP_NAME):dev .
+
+docker-run:
+	docker run --rm -p 8080:8080 \
+		-v $(PWD)/config.yaml:/config/config.yaml:ro \
+		-v skylight-bridge-data:/data \
+		$(APP_NAME):dev
+
+.PHONY: vet build lint test clean docker-build docker-run
