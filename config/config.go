@@ -12,13 +12,39 @@ import (
 
 // Config is the top-level configuration for skylight-bridge.
 type Config struct {
-	Auth      AuthConfig    `yaml:"auth"`
-	FrameID   string        `yaml:"frame_id"`
-	Polling   PollingConfig `yaml:"polling"`
-	StateFile string        `yaml:"state_file"`
-	Server    ServerConfig  `yaml:"server"`
-	Log       LogConfig     `yaml:"log"`
-	Rules     []RuleConfig  `yaml:"rules"`
+	Auth         AuthConfig          `yaml:"auth"`
+	FrameID      string              `yaml:"frame_id"`
+	Polling      PollingConfig       `yaml:"polling"`
+	StateFile    string              `yaml:"state_file"`
+	Server       ServerConfig        `yaml:"server"`
+	Log          LogConfig           `yaml:"log"`
+	Rules        []RuleConfig        `yaml:"rules"`
+	GooglePhotos *GooglePhotosConfig `yaml:"google_photos,omitempty"`
+}
+
+// GooglePhotosConfig holds credentials and settings for Google Photos sync.
+type GooglePhotosConfig struct {
+	ClientID     string `yaml:"client_id"`
+	ClientSecret string `yaml:"client_secret"`
+	RefreshToken string `yaml:"refresh_token"`
+	// FrameID overrides the top-level frame_id for photo uploads.
+	// Defaults to the top-level frame_id if omitted.
+	FrameID      string `yaml:"frame_id"`
+	SyncCount    int    `yaml:"sync_count"`
+	SyncInterval string `yaml:"sync_interval"`
+}
+
+// ParsedSyncInterval returns the sync interval as a time.Duration.
+// Defaults to 1h if not set or unparseable.
+func (g GooglePhotosConfig) ParsedSyncInterval() time.Duration {
+	if g.SyncInterval == "" {
+		return time.Hour
+	}
+	d, err := time.ParseDuration(g.SyncInterval)
+	if err != nil || d <= 0 {
+		return time.Hour
+	}
+	return d
 }
 
 // AuthConfig holds Skylight authentication credentials.
@@ -102,6 +128,9 @@ func (c *Config) validate() error {
 	if c.FrameID == "" {
 		return fmt.Errorf("frame_id is required")
 	}
+	if err := c.validateGooglePhotos(); err != nil {
+		return err
+	}
 	for i, r := range c.Rules {
 		if r.Name == "" {
 			return fmt.Errorf("rule %d: name is required", i)
@@ -117,6 +146,17 @@ func (c *Config) validate() error {
 				return fmt.Errorf("rule %q action %d: type is required", r.Name, j)
 			}
 		}
+	}
+	return nil
+}
+
+func (c *Config) validateGooglePhotos() error {
+	gp := c.GooglePhotos
+	if gp == nil {
+		return nil
+	}
+	if gp.ClientID == "" || gp.ClientSecret == "" || gp.RefreshToken == "" {
+		return fmt.Errorf("google_photos requires client_id, client_secret, and refresh_token")
 	}
 	return nil
 }
@@ -141,5 +181,13 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Log.Format == "" {
 		c.Log.Format = "json"
+	}
+	if gp := c.GooglePhotos; gp != nil {
+		if gp.SyncCount <= 0 {
+			gp.SyncCount = 50
+		}
+		if gp.FrameID == "" {
+			gp.FrameID = c.FrameID
+		}
 	}
 }

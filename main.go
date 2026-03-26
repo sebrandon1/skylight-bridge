@@ -14,6 +14,7 @@ import (
 	"github.com/sebrandon1/skylight-bridge/action"
 	"github.com/sebrandon1/skylight-bridge/config"
 	"github.com/sebrandon1/skylight-bridge/engine"
+	"github.com/sebrandon1/skylight-bridge/integrations/googlephotos"
 	"github.com/sebrandon1/skylight-bridge/rules"
 	"github.com/sebrandon1/skylight-bridge/server"
 	"github.com/sebrandon1/skylight-bridge/state"
@@ -107,6 +108,34 @@ func main() {
 	// Signal handling.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Start Google Photos syncer if configured.
+	if gp := cfg.GooglePhotos; gp != nil {
+		gpClient := googlephotos.NewClient(gp.ClientID, gp.ClientSecret, gp.RefreshToken)
+		syncedIDs := store.GetState().SyncedGooglePhotoIDs
+		syncer := googlephotos.NewSyncer(
+			gpClient,
+			client,
+			gp.FrameID,
+			gp.SyncCount,
+			gp.ParsedSyncInterval(),
+			syncedIDs,
+			logger,
+		)
+		syncer.Start(ctx)
+		// Persist synced IDs back to state on shutdown.
+		go func() {
+			<-ctx.Done()
+			store.UpdateState(func(s *state.State) {
+				s.SyncedGooglePhotoIDs = syncer.SyncedIDs()
+			})
+		}()
+		logger.Info("google photos sync enabled",
+			slog.String("frame_id", gp.FrameID),
+			slog.Int("sync_count", gp.SyncCount),
+			slog.Duration("interval", gp.ParsedSyncInterval()),
+		)
+	}
 
 	// Start poller.
 	poller.Start(ctx)

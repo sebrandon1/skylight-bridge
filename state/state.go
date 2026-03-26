@@ -11,10 +11,11 @@ import (
 
 // State holds the persisted snapshot of detected resource states.
 type State struct {
-	Chores            map[string]string `json:"chores"`
-	Rewards           map[string]bool   `json:"rewards"`
-	AllCompletedFired map[string]bool   `json:"all_completed_fired"`
-	LastPollAt        time.Time         `json:"last_poll_at"`
+	Chores               map[string]string `json:"chores"`
+	Rewards              map[string]bool   `json:"rewards"`
+	AllCompletedFired    map[string]bool   `json:"all_completed_fired"`
+	LastPollAt           time.Time         `json:"last_poll_at"`
+	SyncedGooglePhotoIDs map[string]bool   `json:"synced_google_photo_ids,omitempty"`
 }
 
 // Store manages loading and saving state to a JSON file with atomic writes.
@@ -29,9 +30,10 @@ func NewStore(filePath string) *Store {
 	return &Store{
 		filePath: filePath,
 		state: State{
-			Chores:            make(map[string]string),
-			Rewards:           make(map[string]bool),
-			AllCompletedFired: make(map[string]bool),
+			Chores:               make(map[string]string),
+			Rewards:              make(map[string]bool),
+			AllCompletedFired:    make(map[string]bool),
+			SyncedGooglePhotoIDs: make(map[string]bool),
 		},
 	}
 }
@@ -62,6 +64,9 @@ func (s *Store) Load() error {
 	}
 	if st.AllCompletedFired == nil {
 		st.AllCompletedFired = make(map[string]bool)
+	}
+	if st.SyncedGooglePhotoIDs == nil {
+		st.SyncedGooglePhotoIDs = make(map[string]bool)
 	}
 
 	s.state = st
@@ -95,10 +100,11 @@ func (s *Store) GetState() State {
 	defer s.mu.Unlock()
 
 	return State{
-		Chores:            copyMapSS(s.state.Chores),
-		Rewards:           copyMapSB(s.state.Rewards),
-		AllCompletedFired: copyMapSB(s.state.AllCompletedFired),
-		LastPollAt:        s.state.LastPollAt,
+		Chores:               copyMapSS(s.state.Chores),
+		Rewards:              copyMapSB(s.state.Rewards),
+		AllCompletedFired:    copyMapSB(s.state.AllCompletedFired),
+		LastPollAt:           s.state.LastPollAt,
+		SyncedGooglePhotoIDs: copyMapSB(s.state.SyncedGooglePhotoIDs),
 	}
 }
 

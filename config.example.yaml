@@ -27,6 +27,35 @@ log:
   level: "info"     # debug, info, warn, error
   format: "json"    # json or text
 
+# Google Photos sync (optional).
+# Automatically uploads your most recent Google Photos to a Skylight frame.
+#
+# Prerequisites — set up once in Google Cloud Console:
+#   1. Go to https://console.cloud.google.com/ and create (or select) a project.
+#   2. Enable the "Photos Library API":
+#      APIs & Services → Enable APIs → search "Photos Library API" → Enable.
+#   3. Create OAuth 2.0 credentials:
+#      APIs & Services → Credentials → Create Credentials → OAuth client ID
+#      Application type: Desktop app  →  give it a name  →  Create.
+#      Download the JSON — your client_id and client_secret are inside.
+#   4. Obtain a refresh token (one-time):
+#      Use the OAuth 2.0 Playground (https://developers.google.com/oauthplayground)
+#        a. Click the gear icon → check "Use your own OAuth credentials"
+#           and enter your client_id / client_secret.
+#        b. In "Step 1", paste this scope and click Authorize:
+#              https://www.googleapis.com/auth/photoslibrary.readonly
+#        c. Sign in with the Google account that owns the photos.
+#        d. Click "Exchange authorization code for tokens" (Step 2).
+#        e. Copy the refresh_token value — it does not expire unless revoked.
+#
+# google_photos:
+#   client_id: "123456789-abc.apps.googleusercontent.com"
+#   client_secret: "GOCSPX-..."
+#   refresh_token: "1//0g..."
+#   frame_id: "your-frame-id"   # defaults to the top-level frame_id if omitted
+#   sync_count: 50              # how many recent photos to pull each cycle (default: 50)
+#   sync_interval: "1h"         # how often to check for new photos (default: 1h)
+
 # Rules define what happens when events are detected.
 rules:
   # Log all chore completions.
