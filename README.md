@@ -135,6 +135,8 @@ rules:
 - `GET /events` - Recent events (ring buffer)
   - `?type=chore.completed` - Filter by event type
   - `?limit=10` - Limit results
+- `GET /rules` - Active rules (name, event type, filters, action types)
+- `GET /stats` - Runtime counters (total polls, last poll time, events by type)
 
 ## Configuration
 

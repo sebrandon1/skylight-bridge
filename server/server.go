@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
+	"github.com/sebrandon1/skylight-bridge/rules"
 )
 
 // Server provides HTTP endpoints for event history and health checks.
@@ -16,6 +17,9 @@ type Server struct {
 	events  []engine.Event
 	maxSize int
 	startAt time.Time
+
+	rulesEngine *rules.Engine
+	poller      *engine.Poller
 }
 
 // New creates a Server with a ring buffer of the given capacity.
@@ -26,6 +30,12 @@ func New(bufferSize int) *Server {
 		startAt: time.Now(),
 	}
 }
+
+// SetRulesEngine wires the rules engine for GET /rules introspection.
+func (s *Server) SetRulesEngine(e *rules.Engine) { s.rulesEngine = e }
+
+// SetPoller wires the poller for GET /stats.
+func (s *Server) SetPoller(p *engine.Poller) { s.poller = p }
 
 // RecordEvent adds an event to the ring buffer. Safe for concurrent use.
 func (s *Server) RecordEvent(e engine.Event) {
@@ -45,6 +55,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /events", s.handleEvents)
+	mux.HandleFunc("GET /rules", s.handleRules)
+	mux.HandleFunc("GET /stats", s.handleStats)
 	return mux
 }
 
@@ -85,4 +97,24 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		"events": all,
 		"count":  len(all),
 	})
+}
+
+func (s *Server) handleRules(w http.ResponseWriter, _ *http.Request) {
+	if s.rulesEngine == nil {
+		http.Error(w, "rules engine not available", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"rules": s.rulesEngine.GetRules(),
+	})
+}
+
+func (s *Server) handleStats(w http.ResponseWriter, _ *http.Request) {
+	if s.poller == nil {
+		http.Error(w, "poller not available", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(s.poller.Stats())
 }

@@ -100,6 +100,10 @@ func main() {
 	interval := cfg.Polling.ParsedInterval()
 	poller := engine.NewPoller(client, cfg.FrameID, interval, store, bus, logger)
 
+	// Wire introspection endpoints.
+	srv.SetRulesEngine(rulesEngine)
+	srv.SetPoller(poller)
+
 	// Signal handling.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

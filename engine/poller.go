@@ -11,6 +11,13 @@ import (
 	"github.com/sebrandon1/skylight-bridge/state"
 )
 
+// PollerStats is a snapshot of poller runtime counters.
+type PollerStats struct {
+	TotalPolls   int64            `json:"total_polls"`
+	LastPollAt   time.Time        `json:"last_poll_at"`
+	EventsByType map[string]int64 `json:"events_by_type"`
+}
+
 // Poller periodically fetches chores and rewards from the Skylight API,
 // detects state changes via a Detector, and publishes events to a Bus.
 type Poller struct {
@@ -24,6 +31,11 @@ type Poller struct {
 
 	stop chan struct{}
 	done chan struct{}
+
+	statsMu      sync.RWMutex
+	totalPolls   int64
+	lastPollAt   time.Time
+	eventsByType map[EventType]int64
 }
 
 // NewPoller creates a Poller. It restores detector state from the store.
@@ -39,15 +51,16 @@ func NewPoller(client *lib.Client, frameID string, interval time.Duration, store
 	})
 
 	return &Poller{
-		client:   client,
-		frameID:  frameID,
-		interval: interval,
-		detector: detector,
-		store:    store,
-		bus:      bus,
-		logger:   logger,
-		stop:     make(chan struct{}),
-		done:     make(chan struct{}),
+		client:       client,
+		frameID:      frameID,
+		interval:     interval,
+		detector:     detector,
+		store:        store,
+		bus:          bus,
+		logger:       logger,
+		stop:         make(chan struct{}),
+		done:         make(chan struct{}),
+		eventsByType: make(map[EventType]int64),
 	}
 }
 
@@ -176,4 +189,28 @@ func (p *Poller) poll(ctx context.Context) {
 		slog.Int("rewards", len(rewards)),
 		slog.Int("events", len(allEvents)),
 	)
+
+	p.statsMu.Lock()
+	p.totalPolls++
+	p.lastPollAt = time.Now()
+	for _, e := range allEvents {
+		p.eventsByType[e.Type]++
+	}
+	p.statsMu.Unlock()
+}
+
+// Stats returns a snapshot of poller runtime counters. Safe for concurrent use.
+func (p *Poller) Stats() PollerStats {
+	p.statsMu.RLock()
+	defer p.statsMu.RUnlock()
+
+	byType := make(map[string]int64, len(p.eventsByType))
+	for k, v := range p.eventsByType {
+		byType[string(k)] = v
+	}
+	return PollerStats{
+		TotalPolls:   p.totalPolls,
+		LastPollAt:   p.lastPollAt,
+		EventsByType: byType,
+	}
 }
