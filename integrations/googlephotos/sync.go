@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	skylightlib "github.com/sebrandon1/go-skylight/lib"
@@ -20,12 +21,16 @@ type Syncer struct {
 	syncCount      int
 	interval       time.Duration
 	logger         *slog.Logger
+	mu             sync.Mutex
 	syncedIDs      map[string]bool
-	done           chan struct{}
+	// onBatchDone is called after each sync pass with the updated synced IDs,
+	// allowing the caller to persist state incrementally rather than only on shutdown.
+	onBatchDone func(map[string]bool)
 }
 
 // NewSyncer creates a Syncer. syncedIDs is the set of already-uploaded Google
 // Photos media item IDs (loaded from persistent state by the caller).
+// onBatchDone is called after each sync pass; pass nil to skip incremental persistence.
 func NewSyncer(
 	gpClient *Client,
 	skylightClient *skylightlib.Client,
@@ -34,6 +39,7 @@ func NewSyncer(
 	interval time.Duration,
 	syncedIDs map[string]bool,
 	logger *slog.Logger,
+	onBatchDone func(map[string]bool),
 ) *Syncer {
 	if syncedIDs == nil {
 		syncedIDs = make(map[string]bool)
@@ -46,7 +52,7 @@ func NewSyncer(
 		interval:       interval,
 		logger:         logger,
 		syncedIDs:      syncedIDs,
-		done:           make(chan struct{}),
+		onBatchDone:    onBatchDone,
 	}
 }
 
@@ -70,6 +76,8 @@ func (s *Syncer) Start(ctx context.Context) {
 
 // SyncedIDs returns a copy of the synced ID set for state persistence.
 func (s *Syncer) SyncedIDs() map[string]bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	out := make(map[string]bool, len(s.syncedIDs))
 	for k, v := range s.syncedIDs {
 		out[k] = v
@@ -86,12 +94,17 @@ func (s *Syncer) sync() {
 
 	uploaded := 0
 	for _, item := range items {
-		if s.syncedIDs[item.ID] {
+		s.mu.Lock()
+		seen := s.syncedIDs[item.ID]
+		s.mu.Unlock()
+		if seen {
 			continue
 		}
 
 		if !isPhoto(item) {
+			s.mu.Lock()
 			s.syncedIDs[item.ID] = true
+			s.mu.Unlock()
 			continue
 		}
 
@@ -116,7 +129,9 @@ func (s *Syncer) sync() {
 			continue
 		}
 
+		s.mu.Lock()
 		s.syncedIDs[item.ID] = true
+		s.mu.Unlock()
 		uploaded++
 		s.logger.Info("google photos: uploaded photo",
 			slog.String("id", item.ID),
@@ -126,6 +141,10 @@ func (s *Syncer) sync() {
 
 	if uploaded > 0 {
 		s.logger.Info("google photos: sync complete", slog.Int("uploaded", uploaded))
+	}
+
+	if s.onBatchDone != nil {
+		s.onBatchDone(s.SyncedIDs())
 	}
 }
 

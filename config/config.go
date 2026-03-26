@@ -37,14 +37,7 @@ type GooglePhotosConfig struct {
 // ParsedSyncInterval returns the sync interval as a time.Duration.
 // Defaults to 1h if not set or unparseable.
 func (g GooglePhotosConfig) ParsedSyncInterval() time.Duration {
-	if g.SyncInterval == "" {
-		return time.Hour
-	}
-	d, err := time.ParseDuration(g.SyncInterval)
-	if err != nil || d <= 0 {
-		return time.Hour
-	}
-	return d
+	return parseDurationWithDefault(g.SyncInterval, time.Hour)
 }
 
 // AuthConfig holds Skylight authentication credentials.
@@ -63,12 +56,16 @@ type PollingConfig struct {
 // ParsedInterval returns the polling interval as a time.Duration.
 // Defaults to 30s if not set or unparseable.
 func (p PollingConfig) ParsedInterval() time.Duration {
-	if p.Interval == "" {
-		return 30 * time.Second
+	return parseDurationWithDefault(p.Interval, 30*time.Second)
+}
+
+func parseDurationWithDefault(s string, def time.Duration) time.Duration {
+	if s == "" {
+		return def
 	}
-	d, err := time.ParseDuration(p.Interval)
+	d, err := time.ParseDuration(s)
 	if err != nil || d <= 0 {
-		return 30 * time.Second
+		return def
 	}
 	return d
 }

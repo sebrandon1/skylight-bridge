@@ -112,28 +112,26 @@ func main() {
 	// Start Google Photos syncer if configured.
 	if gp := cfg.GooglePhotos; gp != nil {
 		gpClient := googlephotos.NewClient(gp.ClientID, gp.ClientSecret, gp.RefreshToken)
-		syncedIDs := store.GetState().SyncedGooglePhotoIDs
+		syncInterval := gp.ParsedSyncInterval()
 		syncer := googlephotos.NewSyncer(
 			gpClient,
 			client,
 			gp.FrameID,
 			gp.SyncCount,
-			gp.ParsedSyncInterval(),
-			syncedIDs,
+			syncInterval,
+			store.GetState().SyncedGooglePhotoIDs,
 			logger,
+			func(ids map[string]bool) {
+				store.UpdateState(func(s *state.State) {
+					s.SyncedGooglePhotoIDs = ids
+				})
+			},
 		)
 		syncer.Start(ctx)
-		// Persist synced IDs back to state on shutdown.
-		go func() {
-			<-ctx.Done()
-			store.UpdateState(func(s *state.State) {
-				s.SyncedGooglePhotoIDs = syncer.SyncedIDs()
-			})
-		}()
 		logger.Info("google photos sync enabled",
 			slog.String("frame_id", gp.FrameID),
 			slog.Int("sync_count", gp.SyncCount),
-			slog.Duration("interval", gp.ParsedSyncInterval()),
+			slog.Duration("interval", syncInterval),
 		)
 	}
 
