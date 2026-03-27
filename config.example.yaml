@@ -27,34 +27,24 @@ log:
   level: "info"     # debug, info, warn, error
   format: "json"    # json or text
 
-# Google Photos sync (optional).
-# Automatically uploads your most recent Google Photos to a Skylight frame.
+# Photo sync (optional).
+# Watches a local folder for new image files and uploads them to a Skylight frame.
+# Drop any image (jpg, jpeg, png, gif, webp, heic, heif) into the folder and it
+# will appear on your frame automatically on the next sync cycle.
 #
-# Prerequisites — set up once in Google Cloud Console:
-#   1. Go to https://console.cloud.google.com/ and create (or select) a project.
-#   2. Enable the "Photos Library API":
-#      APIs & Services → Enable APIs → search "Photos Library API" → Enable.
-#   3. Create OAuth 2.0 credentials:
-#      APIs & Services → Credentials → Create Credentials → OAuth client ID
-#      Application type: Desktop app  →  give it a name  →  Create.
-#      Download the JSON — your client_id and client_secret are inside.
-#   4. Obtain a refresh token (one-time):
-#      Use the OAuth 2.0 Playground (https://developers.google.com/oauthplayground)
-#        a. Click the gear icon → check "Use your own OAuth credentials"
-#           and enter your client_id / client_secret.
-#        b. In "Step 1", paste this scope and click Authorize:
-#              https://www.googleapis.com/auth/photoslibrary.readonly
-#        c. Sign in with the Google account that owns the photos.
-#        d. Click "Exchange authorization code for tokens" (Step 2).
-#        e. Copy the refresh_token value — it does not expire unless revoked.
+# Works with any app that can export or save to a folder:
+#   - Apple Photos: File → Export → export to the watch folder
+#   - Lightroom / Capture One: configure an export preset pointing at the folder
+#   - Dropbox / iCloud Drive: set watch_folder to a synced location
+#   - Any manual drag-and-drop workflow
 #
-# google_photos:
-#   client_id: "123456789-abc.apps.googleusercontent.com"
-#   client_secret: "GOCSPX-..."
-#   refresh_token: "1//0g..."
-#   frame_id: "your-frame-id"   # defaults to the top-level frame_id if omitted
-#   sync_count: 50              # how many recent photos to pull each cycle (default: 50)
-#   sync_interval: "1h"         # how often to check for new photos (default: 1h)
+# Already-uploaded filenames are tracked in the state file, so restarting the
+# bridge will never re-upload photos that were already sent to Skylight.
+#
+# photo_sync:
+#   watch_folder: "~/Pictures/Skylight"   # folder to scan for new images
+#   frame_id: "your-frame-id"             # defaults to the top-level frame_id if omitted
+#   sync_interval: "1m"                   # how often to scan (default: 1m)
 
 # Rules define what happens when events are detected.
 rules:

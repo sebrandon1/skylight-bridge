@@ -12,32 +12,29 @@ import (
 
 // Config is the top-level configuration for skylight-bridge.
 type Config struct {
-	Auth         AuthConfig          `yaml:"auth"`
-	FrameID      string              `yaml:"frame_id"`
-	Polling      PollingConfig       `yaml:"polling"`
-	StateFile    string              `yaml:"state_file"`
-	Server       ServerConfig        `yaml:"server"`
-	Log          LogConfig           `yaml:"log"`
-	Rules        []RuleConfig        `yaml:"rules"`
-	GooglePhotos *GooglePhotosConfig `yaml:"google_photos,omitempty"`
+	Auth      AuthConfig       `yaml:"auth"`
+	FrameID   string           `yaml:"frame_id"`
+	Polling   PollingConfig    `yaml:"polling"`
+	StateFile string           `yaml:"state_file"`
+	Server    ServerConfig     `yaml:"server"`
+	Log       LogConfig        `yaml:"log"`
+	Rules     []RuleConfig     `yaml:"rules"`
+	PhotoSync *PhotoSyncConfig `yaml:"photo_sync,omitempty"`
 }
 
-// GooglePhotosConfig holds credentials and settings for Google Photos sync.
-type GooglePhotosConfig struct {
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	RefreshToken string `yaml:"refresh_token"`
+// PhotoSyncConfig holds settings for the local folder photo sync.
+type PhotoSyncConfig struct {
+	WatchFolder string `yaml:"watch_folder"`
 	// FrameID overrides the top-level frame_id for photo uploads.
 	// Defaults to the top-level frame_id if omitted.
 	FrameID      string `yaml:"frame_id"`
-	SyncCount    int    `yaml:"sync_count"`
 	SyncInterval string `yaml:"sync_interval"`
 }
 
 // ParsedSyncInterval returns the sync interval as a time.Duration.
-// Defaults to 1h if not set or unparseable.
-func (g GooglePhotosConfig) ParsedSyncInterval() time.Duration {
-	return parseDurationWithDefault(g.SyncInterval, time.Hour)
+// Defaults to 1m if not set or unparseable.
+func (p PhotoSyncConfig) ParsedSyncInterval() time.Duration {
+	return parseDurationWithDefault(p.SyncInterval, time.Minute)
 }
 
 // AuthConfig holds Skylight authentication credentials.
@@ -125,7 +122,7 @@ func (c *Config) validate() error {
 	if c.FrameID == "" {
 		return fmt.Errorf("frame_id is required")
 	}
-	if err := c.validateGooglePhotos(); err != nil {
+	if err := c.validatePhotoSync(); err != nil {
 		return err
 	}
 	for i, r := range c.Rules {
@@ -147,13 +144,13 @@ func (c *Config) validate() error {
 	return nil
 }
 
-func (c *Config) validateGooglePhotos() error {
-	gp := c.GooglePhotos
-	if gp == nil {
+func (c *Config) validatePhotoSync() error {
+	ps := c.PhotoSync
+	if ps == nil {
 		return nil
 	}
-	if gp.ClientID == "" || gp.ClientSecret == "" || gp.RefreshToken == "" {
-		return fmt.Errorf("google_photos requires client_id, client_secret, and refresh_token")
+	if ps.WatchFolder == "" {
+		return fmt.Errorf("photo_sync requires watch_folder")
 	}
 	return nil
 }
@@ -179,12 +176,14 @@ func (c *Config) applyDefaults() {
 	if c.Log.Format == "" {
 		c.Log.Format = "json"
 	}
-	if gp := c.GooglePhotos; gp != nil {
-		if gp.SyncCount <= 0 {
-			gp.SyncCount = 50
+	if ps := c.PhotoSync; ps != nil {
+		if ps.FrameID == "" {
+			ps.FrameID = c.FrameID
 		}
-		if gp.FrameID == "" {
-			gp.FrameID = c.FrameID
+		if strings.HasPrefix(ps.WatchFolder, "~/") {
+			if home, err := os.UserHomeDir(); err == nil {
+				ps.WatchFolder = filepath.Join(home, ps.WatchFolder[2:])
+			}
 		}
 	}
 }

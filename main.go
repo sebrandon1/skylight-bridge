@@ -14,7 +14,7 @@ import (
 	"github.com/sebrandon1/skylight-bridge/action"
 	"github.com/sebrandon1/skylight-bridge/config"
 	"github.com/sebrandon1/skylight-bridge/engine"
-	"github.com/sebrandon1/skylight-bridge/integrations/googlephotos"
+	"github.com/sebrandon1/skylight-bridge/integrations/photosync"
 	"github.com/sebrandon1/skylight-bridge/rules"
 	"github.com/sebrandon1/skylight-bridge/server"
 	"github.com/sebrandon1/skylight-bridge/state"
@@ -109,28 +109,26 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Start Google Photos syncer if configured.
-	if gp := cfg.GooglePhotos; gp != nil {
-		gpClient := googlephotos.NewClient(gp.ClientID, gp.ClientSecret, gp.RefreshToken)
-		syncInterval := gp.ParsedSyncInterval()
-		syncer := googlephotos.NewSyncer(
-			gpClient,
+	// Start local folder photo syncer if configured.
+	if ps := cfg.PhotoSync; ps != nil {
+		syncInterval := ps.ParsedSyncInterval()
+		syncer := photosync.NewSyncer(
 			client,
-			gp.FrameID,
-			gp.SyncCount,
+			ps.WatchFolder,
+			ps.FrameID,
 			syncInterval,
-			store.GetState().SyncedGooglePhotoIDs,
+			store.GetState().SyncedPhotoFiles,
 			logger,
-			func(ids map[string]bool) {
+			func(files map[string]bool) {
 				store.UpdateState(func(s *state.State) {
-					s.SyncedGooglePhotoIDs = ids
+					s.SyncedPhotoFiles = files
 				})
 			},
 		)
 		syncer.Start(ctx)
-		logger.Info("google photos sync enabled",
-			slog.String("frame_id", gp.FrameID),
-			slog.Int("sync_count", gp.SyncCount),
+		logger.Info("photo sync enabled",
+			slog.String("watch_folder", ps.WatchFolder),
+			slog.String("frame_id", ps.FrameID),
 			slog.Duration("interval", syncInterval),
 		)
 	}
