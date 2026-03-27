@@ -14,6 +14,7 @@ import (
 	"github.com/sebrandon1/skylight-bridge/action"
 	"github.com/sebrandon1/skylight-bridge/config"
 	"github.com/sebrandon1/skylight-bridge/engine"
+	"github.com/sebrandon1/skylight-bridge/integrations/photosync"
 	"github.com/sebrandon1/skylight-bridge/rules"
 	"github.com/sebrandon1/skylight-bridge/server"
 	"github.com/sebrandon1/skylight-bridge/state"
@@ -107,6 +108,30 @@ func main() {
 	// Signal handling.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Start local folder photo syncer if configured.
+	if ps := cfg.PhotoSync; ps != nil {
+		syncInterval := ps.ParsedSyncInterval()
+		syncer := photosync.NewSyncer(
+			client,
+			ps.WatchFolder,
+			ps.FrameID,
+			syncInterval,
+			store.GetState().SyncedPhotoFiles,
+			logger,
+			func(files map[string]bool) {
+				store.UpdateState(func(s *state.State) {
+					s.SyncedPhotoFiles = files
+				})
+			},
+		)
+		syncer.Start(ctx)
+		logger.Info("photo sync enabled",
+			slog.String("watch_folder", ps.WatchFolder),
+			slog.String("frame_id", ps.FrameID),
+			slog.Duration("interval", syncInterval),
+		)
+	}
 
 	// Start poller.
 	poller.Start(ctx)

@@ -12,13 +12,29 @@ import (
 
 // Config is the top-level configuration for skylight-bridge.
 type Config struct {
-	Auth      AuthConfig    `yaml:"auth"`
-	FrameID   string        `yaml:"frame_id"`
-	Polling   PollingConfig `yaml:"polling"`
-	StateFile string        `yaml:"state_file"`
-	Server    ServerConfig  `yaml:"server"`
-	Log       LogConfig     `yaml:"log"`
-	Rules     []RuleConfig  `yaml:"rules"`
+	Auth      AuthConfig       `yaml:"auth"`
+	FrameID   string           `yaml:"frame_id"`
+	Polling   PollingConfig    `yaml:"polling"`
+	StateFile string           `yaml:"state_file"`
+	Server    ServerConfig     `yaml:"server"`
+	Log       LogConfig        `yaml:"log"`
+	Rules     []RuleConfig     `yaml:"rules"`
+	PhotoSync *PhotoSyncConfig `yaml:"photo_sync,omitempty"`
+}
+
+// PhotoSyncConfig holds settings for the local folder photo sync.
+type PhotoSyncConfig struct {
+	WatchFolder string `yaml:"watch_folder"`
+	// FrameID overrides the top-level frame_id for photo uploads.
+	// Defaults to the top-level frame_id if omitted.
+	FrameID      string `yaml:"frame_id"`
+	SyncInterval string `yaml:"sync_interval"`
+}
+
+// ParsedSyncInterval returns the sync interval as a time.Duration.
+// Defaults to 1m if not set or unparseable.
+func (p PhotoSyncConfig) ParsedSyncInterval() time.Duration {
+	return parseDurationWithDefault(p.SyncInterval, time.Minute)
 }
 
 // AuthConfig holds Skylight authentication credentials.
@@ -37,12 +53,16 @@ type PollingConfig struct {
 // ParsedInterval returns the polling interval as a time.Duration.
 // Defaults to 30s if not set or unparseable.
 func (p PollingConfig) ParsedInterval() time.Duration {
-	if p.Interval == "" {
-		return 30 * time.Second
+	return parseDurationWithDefault(p.Interval, 30*time.Second)
+}
+
+func parseDurationWithDefault(s string, def time.Duration) time.Duration {
+	if s == "" {
+		return def
 	}
-	d, err := time.ParseDuration(p.Interval)
+	d, err := time.ParseDuration(s)
 	if err != nil || d <= 0 {
-		return 30 * time.Second
+		return def
 	}
 	return d
 }
@@ -102,6 +122,9 @@ func (c *Config) validate() error {
 	if c.FrameID == "" {
 		return fmt.Errorf("frame_id is required")
 	}
+	if err := c.validatePhotoSync(); err != nil {
+		return err
+	}
 	for i, r := range c.Rules {
 		if r.Name == "" {
 			return fmt.Errorf("rule %d: name is required", i)
@@ -117,6 +140,17 @@ func (c *Config) validate() error {
 				return fmt.Errorf("rule %q action %d: type is required", r.Name, j)
 			}
 		}
+	}
+	return nil
+}
+
+func (c *Config) validatePhotoSync() error {
+	ps := c.PhotoSync
+	if ps == nil {
+		return nil
+	}
+	if ps.WatchFolder == "" {
+		return fmt.Errorf("photo_sync requires watch_folder")
 	}
 	return nil
 }
@@ -141,5 +175,15 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Log.Format == "" {
 		c.Log.Format = "json"
+	}
+	if ps := c.PhotoSync; ps != nil {
+		if ps.FrameID == "" {
+			ps.FrameID = c.FrameID
+		}
+		if strings.HasPrefix(ps.WatchFolder, "~/") {
+			if home, err := os.UserHomeDir(); err == nil {
+				ps.WatchFolder = filepath.Join(home, ps.WatchFolder[2:])
+			}
+		}
 	}
 }
