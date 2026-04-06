@@ -109,7 +109,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Start local folder photo syncer if configured.
 	if ps := cfg.PhotoSync; ps != nil {
 		syncInterval := ps.ParsedSyncInterval()
 		syncer := photosync.NewSyncer(

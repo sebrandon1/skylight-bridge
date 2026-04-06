@@ -28,9 +28,7 @@ type Syncer struct {
 	logger         *slog.Logger
 	mu             sync.Mutex
 	syncedFiles    map[string]bool
-	// onBatchDone is called after each scan pass with the updated synced file
-	// set, allowing the caller to persist state incrementally.
-	onBatchDone func(map[string]bool)
+	onBatchDone    func(map[string]bool)
 }
 
 // NewSyncer creates a Syncer. syncedFiles is the set of already-uploaded
@@ -77,8 +75,7 @@ func (s *Syncer) Start(ctx context.Context) {
 	}()
 }
 
-// SyncedFiles returns a copy of the synced filename set for state persistence.
-func (s *Syncer) SyncedFiles() map[string]bool {
+func (s *Syncer) syncedFilesCopy() map[string]bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	out := make(map[string]bool, len(s.syncedFiles))
@@ -146,8 +143,8 @@ func (s *Syncer) sync() {
 		s.logger.Info("photo sync: scan complete", slog.Int("uploaded", uploaded))
 	}
 
-	if s.onBatchDone != nil {
-		s.onBatchDone(s.SyncedFiles())
+	if uploaded > 0 && s.onBatchDone != nil {
+		s.onBatchDone(s.syncedFilesCopy())
 	}
 }
 

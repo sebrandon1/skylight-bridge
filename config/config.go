@@ -155,15 +155,22 @@ func (c *Config) validatePhotoSync() error {
 	return nil
 }
 
+func expandHomeDir(path string) string {
+	if !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return filepath.Join(home, path[2:])
+}
+
 func (c *Config) applyDefaults() {
 	if c.StateFile == "" {
 		c.StateFile = "~/.skylight-bridge/state.json"
 	}
-	if strings.HasPrefix(c.StateFile, "~/") {
-		if home, err := os.UserHomeDir(); err == nil {
-			c.StateFile = filepath.Join(home, c.StateFile[2:])
-		}
-	}
+	c.StateFile = expandHomeDir(c.StateFile)
 	if c.Server.Addr == "" {
 		c.Server.Addr = ":8080"
 	}
@@ -180,10 +187,6 @@ func (c *Config) applyDefaults() {
 		if ps.FrameID == "" {
 			ps.FrameID = c.FrameID
 		}
-		if strings.HasPrefix(ps.WatchFolder, "~/") {
-			if home, err := os.UserHomeDir(); err == nil {
-				ps.WatchFolder = filepath.Join(home, ps.WatchFolder[2:])
-			}
-		}
+		ps.WatchFolder = expandHomeDir(ps.WatchFolder)
 	}
 }
