@@ -27,6 +27,25 @@ log:
   level: "info"     # debug, info, warn, error
   format: "json"    # json or text
 
+# Photo sync (optional).
+# Watches a local folder for new image files and uploads them to a Skylight frame.
+# Drop any image (jpg, jpeg, png, gif, webp, heic, heif) into the folder and it
+# will appear on your frame automatically on the next sync cycle.
+#
+# Works with any app that can export or save to a folder:
+#   - Apple Photos: File → Export → export to the watch folder
+#   - Lightroom / Capture One: configure an export preset pointing at the folder
+#   - Dropbox / iCloud Drive: set watch_folder to a synced location
+#   - Any manual drag-and-drop workflow
+#
+# Already-uploaded filenames are tracked in the state file, so restarting the
+# bridge will never re-upload photos that were already sent to Skylight.
+#
+# photo_sync:
+#   watch_folder: "~/Pictures/Skylight"   # folder to scan for new images
+#   frame_id: "your-frame-id"             # defaults to the top-level frame_id if omitted
+#   sync_interval: "1m"                   # how often to scan (default: 1m)
+
 # Rules define what happens when events are detected.
 rules:
   # Log all chore completions.
