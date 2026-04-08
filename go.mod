@@ -2,8 +2,6 @@ module github.com/sebrandon1/skylight-bridge
 
 go 1.26.2
 
-toolchain go1.26.2
-
 require (
 	github.com/sebrandon1/go-skylight v0.0.17
 	gopkg.in/yaml.v3 v3.0.1
