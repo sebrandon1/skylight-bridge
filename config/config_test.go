@@ -9,8 +9,8 @@ import (
 func TestLoadValid(t *testing.T) {
 	yaml := `
 auth:
-  email: "test@example.com"
-  password: "secret"
+  refresh_token: "tok"
+  device_fingerprint: "fp"
 frame_id: "frame-1"
 polling:
   interval: "45s"
@@ -33,8 +33,8 @@ rules:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Auth.Email != "test@example.com" {
-		t.Errorf("email = %q, want test@example.com", cfg.Auth.Email)
+	if cfg.Auth.RefreshToken != "tok" {
+		t.Errorf("refresh_token = %q, want tok", cfg.Auth.RefreshToken)
 	}
 	if cfg.FrameID != "frame-1" {
 		t.Errorf("frame_id = %q, want frame-1", cfg.FrameID)
@@ -78,6 +78,47 @@ rules:
 	}
 }
 
+func TestLoadRefreshTokenAuth(t *testing.T) {
+	yaml := `
+auth:
+  refresh_token: "refresh-tok"
+  device_fingerprint: "fp-uuid"
+frame_id: "frame-1"
+rules:
+  - name: "r"
+    event: "reward.redeemed"
+    actions:
+      - type: log
+`
+	path := writeTempConfig(t, yaml)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Auth.RefreshToken != "refresh-tok" || cfg.Auth.DeviceFingerprint != "fp-uuid" {
+		t.Errorf("refresh auth not parsed correctly")
+	}
+}
+
+func TestLoadEmailAuthRejected(t *testing.T) {
+	yaml := `
+auth:
+  email: "a@b.com"
+  password: "p"
+frame_id: "frame-1"
+rules:
+  - name: "r"
+    event: "chore.completed"
+    actions:
+      - type: log
+`
+	path := writeTempConfig(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for email+password auth")
+	}
+}
+
 func TestLoadMissingAuth(t *testing.T) {
 	yaml := `
 frame_id: "frame-1"
@@ -97,8 +138,8 @@ rules:
 func TestLoadMissingFrameID(t *testing.T) {
 	yaml := `
 auth:
-  email: "a@b.com"
-  password: "p"
+  refresh_token: "tok"
+  device_fingerprint: "fp"
 rules:
   - name: "r"
     event: "chore.completed"
@@ -115,8 +156,8 @@ rules:
 func TestLoadMissingRuleName(t *testing.T) {
 	yaml := `
 auth:
-  email: "a@b.com"
-  password: "p"
+  refresh_token: "tok"
+  device_fingerprint: "fp"
 frame_id: "f"
 rules:
   - event: "chore.completed"
@@ -133,8 +174,8 @@ rules:
 func TestLoadMissingRuleActions(t *testing.T) {
 	yaml := `
 auth:
-  email: "a@b.com"
-  password: "p"
+  refresh_token: "tok"
+  device_fingerprint: "fp"
 frame_id: "f"
 rules:
   - name: "r"
@@ -150,8 +191,8 @@ rules:
 func TestDefaults(t *testing.T) {
 	yaml := `
 auth:
-  email: "a@b.com"
-  password: "p"
+  refresh_token: "tok"
+  device_fingerprint: "fp"
 frame_id: "f"
 rules:
   - name: "r"

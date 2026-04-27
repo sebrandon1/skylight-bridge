@@ -1,11 +1,16 @@
 # skylight-bridge configuration
 #
-# Authentication: provide either email+password OR user_id+token.
+# Authentication: provide one of:
+#   - refresh_token + device_fingerprint  (recommended — uses OAuth2, never expires)
+#   - user_id + token                     (static Bearer token, expires)
+#   - email + password                    (legacy Basic auth, no longer supported by Skylight)
 auth:
-  email: "your-email@example.com"
-  password: "your-password"
+  refresh_token: "your-oauth2-refresh-token"
+  device_fingerprint: "your-device-fingerprint-uuid"
   # user_id: "your-user-id"
   # token: "your-api-token"
+  # email: "your-email@example.com"
+  # password: "your-password"
 
 # The Skylight frame to monitor.
 frame_id: "your-frame-id"

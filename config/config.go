@@ -39,10 +39,12 @@ func (p PhotoSyncConfig) ParsedSyncInterval() time.Duration {
 
 // AuthConfig holds Skylight authentication credentials.
 type AuthConfig struct {
-	Email    string `yaml:"email"`
-	Password string `yaml:"password"`
-	UserID   string `yaml:"user_id"`
-	Token    string `yaml:"token"`
+	Email             string `yaml:"email"`
+	Password          string `yaml:"password"`
+	UserID            string `yaml:"user_id"`
+	Token             string `yaml:"token"`
+	RefreshToken      string `yaml:"refresh_token"`
+	DeviceFingerprint string `yaml:"device_fingerprint"`
 }
 
 // PollingConfig controls how often the bridge polls the Skylight API.
@@ -114,10 +116,14 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	hasEmailAuth := c.Auth.Email != "" && c.Auth.Password != ""
+	hasEmailAuth := c.Auth.Email != "" || c.Auth.Password != ""
 	hasTokenAuth := c.Auth.UserID != "" && c.Auth.Token != ""
-	if !hasEmailAuth && !hasTokenAuth {
-		return fmt.Errorf("auth requires either email+password or user_id+token")
+	hasRefreshAuth := c.Auth.RefreshToken != "" && c.Auth.DeviceFingerprint != ""
+	if hasEmailAuth && !hasTokenAuth && !hasRefreshAuth {
+		return fmt.Errorf("email+password auth is no longer supported by Skylight; use refresh_token+device_fingerprint instead")
+	}
+	if !hasTokenAuth && !hasRefreshAuth {
+		return fmt.Errorf("auth requires either refresh_token+device_fingerprint or user_id+token")
 	}
 	if c.FrameID == "" {
 		return fmt.Errorf("frame_id is required")
@@ -125,6 +131,10 @@ func (c *Config) validate() error {
 	if err := c.validatePhotoSync(); err != nil {
 		return err
 	}
+	return c.validateRules()
+}
+
+func (c *Config) validateRules() error {
 	for i, r := range c.Rules {
 		if r.Name == "" {
 			return fmt.Errorf("rule %d: name is required", i)

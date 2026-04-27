@@ -195,8 +195,8 @@ func buildClient(cfg *config.Config, logger *slog.Logger) (*lib.Client, error) {
 		lib.WithRetry(3, 500*time.Millisecond, 10*time.Second),
 	}
 
-	if cfg.Auth.Token != "" && cfg.Auth.UserID != "" {
-		return lib.NewClientWithToken(cfg.Auth.UserID, cfg.Auth.Token, opts...)
+	if cfg.Auth.RefreshToken != "" && cfg.Auth.DeviceFingerprint != "" {
+		return lib.NewClientWithRefreshToken(cfg.Auth.RefreshToken, cfg.Auth.DeviceFingerprint, opts...)
 	}
-	return lib.NewClient(cfg.Auth.Email, cfg.Auth.Password, opts...)
+	return lib.NewClientWithToken(cfg.Auth.UserID, cfg.Auth.Token, opts...)
 }

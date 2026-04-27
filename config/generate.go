@@ -29,25 +29,26 @@ func Generate(path string, force bool) error {
 	// Authentication.
 	fmt.Println("Authentication")
 	fmt.Println("--------------")
-	authMethod := prompt(r, "Auth method (email or token)", "email")
+	authMethod := prompt(r, "Auth method (refresh or token)", "refresh")
 
 	var authBlock string
-	var email, password, userID, token string
+	var userID, token, refreshToken, deviceFingerprint string
 
-	if authMethod == "token" {
+	switch authMethod {
+	case "token":
 		userID = prompt(r, "User ID", "")
 		token = prompt(r, "API Token", "")
 		authBlock = fmt.Sprintf("auth:\n  user_id: %q\n  token: %q", userID, token)
-	} else {
-		email = prompt(r, "Email", "")
-		password = prompt(r, "Password", "")
-		authBlock = fmt.Sprintf("auth:\n  email: %q\n  password: %q", email, password)
+	default:
+		refreshToken = prompt(r, "Refresh Token", "")
+		deviceFingerprint = prompt(r, "Device Fingerprint", "")
+		authBlock = fmt.Sprintf("auth:\n  refresh_token: %q\n  device_fingerprint: %q", refreshToken, deviceFingerprint)
 	}
 
 	// Authenticate and discover frames.
 	fmt.Println()
 	fmt.Println("Connecting to Skylight API...")
-	frameID, err := discoverFrame(r, authMethod, email, password, userID, token)
+	frameID, err := discoverFrame(r, authMethod, userID, token, refreshToken, deviceFingerprint)
 	if err != nil {
 		fmt.Printf("  Could not auto-discover frames: %v\n", err)
 		fmt.Println()
@@ -193,14 +194,15 @@ func Generate(path string, force bool) error {
 	return nil
 }
 
-func discoverFrame(r *bufio.Reader, authMethod, email, password, userID, token string) (string, error) {
+func discoverFrame(r *bufio.Reader, authMethod, userID, token, refreshToken, deviceFingerprint string) (string, error) {
 	var client *lib.Client
 	var err error
 
-	if authMethod == "token" {
+	switch authMethod {
+	case "token":
 		client, err = lib.NewClientWithToken(userID, token)
-	} else {
-		client, err = lib.NewClient(email, password)
+	default:
+		client, err = lib.NewClientWithRefreshToken(refreshToken, deviceFingerprint)
 	}
 	if err != nil {
 		return "", err
