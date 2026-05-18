@@ -2,7 +2,7 @@ module github.com/sebrandon1/skylight-bridge
 
 go 1.26.1
 
-toolchain go1.26.2
+toolchain go1.26.3
 
 require (
 	github.com/sebrandon1/go-skylight v0.0.23

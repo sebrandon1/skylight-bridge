@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -113,7 +114,9 @@ func (s *Store) UpdateState(fn func(*State)) {
 	s.mu.Lock()
 	fn(&s.state)
 	s.mu.Unlock()
-	_ = s.Save()
+	if err := s.Save(); err != nil {
+		slog.Error("failed to persist state", slog.String("error", err.Error()))
+	}
 }
 
 func copyMapSS(m map[string]string) map[string]string {
