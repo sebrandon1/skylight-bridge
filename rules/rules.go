@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync/atomic"
+	"time"
 
 	"github.com/sebrandon1/skylight-bridge/action"
 	"github.com/sebrandon1/skylight-bridge/config"
@@ -48,6 +49,9 @@ func NewEngine(configs []config.RuleConfig, factories map[string]action.Factory,
 			a, err := factory(ac.Config)
 			if err != nil {
 				return nil, fmt.Errorf("rule %q action %d (%s): %w", rc.Name, j, ac.Type, err)
+			}
+			if ac.RetryAttempts > 1 {
+				a = action.WrapRetry(a, ac.RetryAttempts, parseRetryDelay(ac.RetryDelay))
 			}
 			actions = append(actions, a)
 			actionTypes = append(actionTypes, ac.Type)
@@ -100,6 +104,15 @@ func (e *Engine) GetRules() []RuleInfo {
 
 // ActionFailures returns the cumulative count of action execution errors.
 func (e *Engine) ActionFailures() int64 { return e.actionFailures.Load() }
+
+func parseRetryDelay(s string) time.Duration {
+	if s != "" {
+		if d, err := time.ParseDuration(s); err == nil && d > 0 {
+			return d
+		}
+	}
+	return time.Second
+}
 
 func matchFilters(filters map[string]string, data map[string]any) bool {
 	for key, want := range filters {

@@ -138,6 +138,24 @@ actions:
       timeout: "30s"                    # optional, default: 10s
 ```
 
+## Retry
+
+Any action can be retried on failure with exponential backoff:
+
+```yaml
+rules:
+  - name: "notify-on-completion"
+    event: "chore.completed"
+    actions:
+      - type: webhook
+        retry_attempts: 3   # total attempts (default: 1, no retry)
+        retry_delay: "1s"   # initial delay before retry; doubles each attempt, capped at 30s
+        config:
+          url: "https://example.com/hook"
+```
+
+On each failure the bridge waits `retry_delay`, `retry_delay*2`, etc. before the next attempt. If the shutdown signal fires during a retry wait the attempt is abandoned immediately.
+
 ## Filters
 
 Rules can filter events by any field in the event data:
