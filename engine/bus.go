@@ -1,6 +1,9 @@
 package engine
 
-import "sync"
+import (
+	"log/slog"
+	"sync"
+)
 
 // Bus provides simple pub/sub fan-out for events.
 type Bus struct {
@@ -20,7 +23,7 @@ func (b *Bus) Subscribe(fn func(Event)) {
 	b.mu.Unlock()
 }
 
-// Publish sends an event to all subscribers synchronously.
+// Publish sends an event to all subscribers, each in its own goroutine.
 func (b *Bus) Publish(event Event) {
 	b.mu.RLock()
 	subs := make([]func(Event), len(b.subscribers))
@@ -28,6 +31,13 @@ func (b *Bus) Publish(event Event) {
 	b.mu.RUnlock()
 
 	for _, fn := range subs {
-		fn(event)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("subscriber panic", slog.Any("panic", r))
+				}
+			}()
+			fn(event)
+		}()
 	}
 }
