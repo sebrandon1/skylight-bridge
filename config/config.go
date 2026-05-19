@@ -94,8 +94,10 @@ type RuleConfig struct {
 
 // ActionConfig defines an action to execute when a rule matches.
 type ActionConfig struct {
-	Type   string         `yaml:"type"`
-	Config map[string]any `yaml:"config"`
+	Type          string         `yaml:"type"`
+	Config        map[string]any `yaml:"config"`
+	RetryAttempts int            `yaml:"retry_attempts,omitempty"` // total attempts; 0 or 1 means no retry
+	RetryDelay    string         `yaml:"retry_delay,omitempty"`    // initial backoff delay (e.g. "1s"); default 1s
 }
 
 // Load reads and validates a config file from the given path.

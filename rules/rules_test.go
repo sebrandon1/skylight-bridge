@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -120,6 +121,69 @@ func TestEngineWrongEventType(t *testing.T) {
 	if executed {
 		t.Error("action should not execute for wrong event type")
 	}
+}
+
+func TestParseRetryDelay(t *testing.T) {
+	tests := []struct {
+		input string
+		want  time.Duration
+	}{
+		{"2s", 2 * time.Second},
+		{"500ms", 500 * time.Millisecond},
+		{"", time.Second},
+		{"invalid", time.Second},
+		{"-1s", time.Second},
+	}
+	for _, tt := range tests {
+		got := parseRetryDelay(tt.input)
+		if got != tt.want {
+			t.Errorf("parseRetryDelay(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestEngineRetryOnFailure(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	calls := 0
+	factory := func(_ map[string]any) (action.Action, error) {
+		return &countFailAction{successAfter: 2, calls: &calls}, nil
+	}
+
+	eng, err := NewEngine([]config.RuleConfig{
+		{
+			Name:  "retried",
+			Event: "chore.completed",
+			Actions: []config.ActionConfig{
+				{Type: "mock", RetryAttempts: 3, RetryDelay: "1ms"},
+			},
+		},
+	}, map[string]action.Factory{"mock": factory}, logger)
+	if err != nil {
+		t.Fatalf("NewEngine: %v", err)
+	}
+
+	eng.HandleEvent(context.Background(), engine.Event{
+		Type: engine.EventChoreCompleted,
+		Data: map[string]any{},
+	})
+
+	if calls != 3 {
+		t.Errorf("calls = %d, want 3 (2 failures + 1 success)", calls)
+	}
+}
+
+type countFailAction struct {
+	calls        *int
+	successAfter int
+}
+
+func (a *countFailAction) Execute(_ context.Context, _ engine.Event) error {
+	*a.calls++
+	if *a.calls > a.successAfter {
+		return nil
+	}
+	return fmt.Errorf("transient error on attempt %d", *a.calls)
 }
 
 func TestEngineUnknownActionType(t *testing.T) {
