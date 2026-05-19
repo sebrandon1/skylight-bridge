@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"text/template"
-	"time"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -54,7 +53,7 @@ func NewWebhookAction(config map[string]any) (Action, error) {
 		url:     url,
 		method:  method,
 		headers: headers,
-		client:  &http.Client{Timeout: 10 * time.Second},
+		client:  &http.Client{Timeout: parseTimeout(config)},
 	}
 
 	if tmplStr, ok := config["body_template"].(string); ok && tmplStr != "" {

@@ -117,3 +117,18 @@ func TestWebhookActionInvalidURL(t *testing.T) {
 		t.Fatal("expected error for URL without scheme")
 	}
 }
+
+func TestWebhookActionCustomTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	_, err := NewWebhookAction(map[string]any{
+		"url":     srv.URL,
+		"timeout": "30s",
+	})
+	if err != nil {
+		t.Fatalf("NewWebhookAction with timeout: %v", err)
+	}
+}

@@ -72,6 +72,9 @@ func main() {
 		logger.Warn("could not load state, starting fresh", slog.String("error", err.Error()))
 	}
 
+	// Signal handling — set up early so ctx can be threaded through subscribers.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
 	bus := engine.NewBus()
 
 	// Set up event server.
@@ -90,7 +93,7 @@ func main() {
 		os.Exit(1)
 	}
 	bus.Subscribe(func(e engine.Event) {
-		rulesEngine.HandleEvent(context.Background(), e)
+		rulesEngine.HandleEvent(ctx, e)
 	})
 
 	// Set up poller.
@@ -100,10 +103,6 @@ func main() {
 	// Wire introspection endpoints.
 	srv.SetRulesEngine(rulesEngine)
 	srv.SetPoller(poller)
-
-	// Signal handling.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	if ps := cfg.PhotoSync; ps != nil {
 		syncInterval := ps.ParsedSyncInterval()
@@ -152,6 +151,7 @@ func main() {
 
 	// Wait for shutdown signal.
 	<-ctx.Done()
+	stop()
 	logger.Info("shutting down...")
 
 	poller.Stop()

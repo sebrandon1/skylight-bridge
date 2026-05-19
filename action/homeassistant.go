@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -41,7 +40,7 @@ func NewHomeAssistantAction(config map[string]any) (Action, error) {
 
 	a := &HomeAssistantAction{
 		baseURL: baseURL,
-		client:  &http.Client{Timeout: 10 * time.Second},
+		client:  &http.Client{Timeout: parseTimeout(config)},
 	}
 
 	if t, ok := config["token"].(string); ok {

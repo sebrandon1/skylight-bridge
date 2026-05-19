@@ -84,6 +84,7 @@ actions:
       headers:                           # optional
         Authorization: "Bearer xyz"
       body_template: '{"kid": "{{.child_name}}"}'  # optional, default: full event JSON
+      timeout: "30s"                    # optional, default: 10s
 ```
 
 ### `discord`
@@ -95,6 +96,7 @@ actions:
     config:
       webhook_url: "https://discord.com/api/webhooks/1234/abcd"
       message: "{{.assignee_name}} completed **{{.chore_title}}"  # optional Go template
+      timeout: "30s"                                               # optional, default: 10s
 ```
 
 If no `message` template is provided, a default human-readable message is generated based on the event type.
@@ -108,6 +110,7 @@ actions:
     config:
       webhook_url: "https://hooks.slack.com/services/T.../B.../xxx"
       message: "{{.assignee_name}} completed *{{.chore_title}}*"  # optional Go template
+      timeout: "30s"                                               # optional, default: 10s
 ```
 
 If no `message` template is provided, a default human-readable message is generated based on the event type.
@@ -124,6 +127,7 @@ actions:
       token: "HA_LONG_LIVED_ACCESS_TOKEN"
       service: "light.turn_on"
       entity_id: "light.living_room"
+      timeout: "30s"                    # optional, default: 10s
 
 # Webhook trigger
 actions:
@@ -131,6 +135,7 @@ actions:
     config:
       url: "http://homeassistant.local:8123"
       webhook_id: "my-skylight-hook"
+      timeout: "30s"                    # optional, default: 10s
 ```
 
 ## Filters
