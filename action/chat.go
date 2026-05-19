@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"text/template"
-	"time"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -31,7 +30,7 @@ func newChatAction(config map[string]any, name, payloadKey string) (Action, erro
 
 	a := &chatAction{
 		webhookURL: url,
-		client:     &http.Client{Timeout: 10 * time.Second},
+		client:     &http.Client{Timeout: parseTimeout(config)},
 		payloadKey: payloadKey,
 		name:       name,
 	}
