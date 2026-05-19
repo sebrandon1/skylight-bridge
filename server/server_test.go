@@ -182,6 +182,33 @@ func TestStatsNotWired(t *testing.T) {
 	}
 }
 
+func TestAuthRequired(t *testing.T) {
+	srv := New(10)
+	srv.SetAuthToken("secret")
+	handler := srv.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
+	}
+}
+
+func TestAuthSuccess(t *testing.T) {
+	srv := New(10)
+	srv.SetAuthToken("secret")
+	handler := srv.Handler()
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", w.Code)
+	}
+}
+
 func TestRingBufferOverflow(t *testing.T) {
 	srv := New(3)
 	for i := range 5 {

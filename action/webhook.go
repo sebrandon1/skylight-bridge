@@ -32,6 +32,9 @@ func NewWebhookAction(config map[string]any) (Action, error) {
 	if !ok || url == "" {
 		return nil, fmt.Errorf("webhook action requires 'url'")
 	}
+	if err := validateHTTPURL(url); err != nil {
+		return nil, fmt.Errorf("webhook action: %w", err)
+	}
 
 	method := "POST"
 	if m, ok := config["method"].(string); ok && m != "" {

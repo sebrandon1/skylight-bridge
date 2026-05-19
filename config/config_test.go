@@ -239,6 +239,25 @@ func TestParsedInterval(t *testing.T) {
 	}
 }
 
+func TestUnknownEventType(t *testing.T) {
+	yaml := `
+auth:
+  refresh_token: "tok"
+  device_fingerprint: "fp"
+frame_id: "f"
+rules:
+  - name: "r"
+    event: "chore.typo"
+    actions:
+      - type: log
+`
+	path := writeTempConfig(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for unknown event type")
+	}
+}
+
 func TestLoadFileNotFound(t *testing.T) {
 	_, err := Load("/nonexistent/config.yaml")
 	if err == nil {

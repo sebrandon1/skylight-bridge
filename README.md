@@ -39,8 +39,26 @@ Event-driven bridge for [Skylight Calendar](https://www.ourskylight.com/). Polls
 | Event | Description |
 |---|---|
 | `chore.completed` | A chore's status changed from pending to completed |
+| `chore.uncompleted` | A chore's status changed from completed back to pending |
 | `chore.all_completed` | All chores for a given kid on today's date are completed (fires once per kid per day) |
 | `reward.redeemed` | A reward was redeemed |
+
+### Event Data Fields
+
+Each event carries a `data` map with fields you can use in templates and filters:
+
+| Event | Field | Example value |
+|---|---|---|
+| `chore.completed` | `chore_title` | `"Clean room"` |
+| `chore.completed` | `assignee_name` | `"Alice"` |
+| `chore.completed` | `category_id` | `"cat-abc123"` |
+| `chore.uncompleted` | `chore_title` | `"Clean room"` |
+| `chore.uncompleted` | `assignee_name` | `"Alice"` |
+| `chore.uncompleted` | `category_id` | `"cat-abc123"` |
+| `chore.all_completed` | `assignee_name` | `"Alice"` |
+| `chore.all_completed` | `category_id` | `"cat-abc123"` |
+| `reward.redeemed` | `reward_title` | `"Invest $20 in VOO"` |
+| `reward.redeemed` | `points` | `20` |
 
 ## Action Types
 
@@ -131,12 +149,24 @@ rules:
 
 ## HTTP Endpoints
 
-- `GET /healthz` - Health check with uptime
+- `GET /healthz` - Health check: uptime, last poll time, poll errors, action failures
 - `GET /events` - Recent events (ring buffer)
   - `?type=chore.completed` - Filter by event type
   - `?limit=10` - Limit results
 - `GET /rules` - Active rules (name, event type, filters, action types)
 - `GET /stats` - Runtime counters (total polls, last poll time, events by type)
+
+If `server.auth_token` is set in config, all endpoints require `Authorization: Bearer <token>`.
+
+## Dry-Run Mode
+
+To validate your config and see which actions would fire without actually executing them:
+
+```bash
+./skylight-bridge --config config.yaml --dry-run
+```
+
+In dry-run mode the bridge polls and detects events normally, but all actions are replaced with log-only no-ops.
 
 ## Configuration
 
@@ -144,7 +174,18 @@ See [config.example.yaml](config.example.yaml) for a complete example.
 
 ### Authentication
 
-Provide either email + password (auto-login) or user_id + token (pre-existing credentials).
+Provide either `refresh_token` + `device_fingerprint` (recommended) or `user_id` + `token`.
+
+### HTTP Server Authentication
+
+Protect the HTTP endpoints with a bearer token:
+
+```yaml
+server:
+  auth_token: "your-secret-token"
+```
+
+Requests must then include `Authorization: Bearer your-secret-token`.
 
 ### Getting Your Frame ID
 

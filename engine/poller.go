@@ -15,6 +15,7 @@ import (
 type PollerStats struct {
 	TotalPolls   int64            `json:"total_polls"`
 	LastPollAt   time.Time        `json:"last_poll_at"`
+	PollErrors   int64            `json:"poll_errors"`
 	EventsByType map[string]int64 `json:"events_by_type"`
 }
 
@@ -35,6 +36,7 @@ type Poller struct {
 	statsMu      sync.RWMutex
 	totalPolls   int64
 	lastPollAt   time.Time
+	pollErrors   int64
 	eventsByType map[EventType]int64
 }
 
@@ -136,15 +138,9 @@ func (p *Poller) poll(ctx context.Context) {
 	default:
 	}
 
-	if choreErr != nil {
-		p.logger.Warn("poll: ListChores failed", slog.String("error", choreErr.Error()))
-	}
-	if rewardErr != nil {
-		p.logger.Warn("poll: ListRewards failed", slog.String("error", rewardErr.Error()))
-	}
-	if catErr != nil {
-		p.logger.Warn("poll: ListCategories failed", slog.String("error", catErr.Error()))
-	}
+	apiErrors := warnErr(p.logger, choreErr, "poll: ListChores failed") +
+		warnErr(p.logger, rewardErr, "poll: ListRewards failed") +
+		warnErr(p.logger, catErr, "poll: ListCategories failed")
 
 	// Resolve child names.
 	if catErr == nil {
@@ -193,6 +189,7 @@ func (p *Poller) poll(ctx context.Context) {
 	p.statsMu.Lock()
 	p.totalPolls++
 	p.lastPollAt = time.Now()
+	p.pollErrors += apiErrors
 	for _, e := range allEvents {
 		p.eventsByType[e.Type]++
 	}
@@ -211,6 +208,16 @@ func (p *Poller) Stats() PollerStats {
 	return PollerStats{
 		TotalPolls:   p.totalPolls,
 		LastPollAt:   p.lastPollAt,
+		PollErrors:   p.pollErrors,
 		EventsByType: byType,
 	}
+}
+
+// warnErr logs err as a warning and returns 1 if non-nil, 0 otherwise.
+func warnErr(logger *slog.Logger, err error, msg string) int64 {
+	if err == nil {
+		return 0
+	}
+	logger.Warn(msg, slog.String("error", err.Error()))
+	return 1
 }

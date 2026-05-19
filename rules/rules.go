@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/sebrandon1/skylight-bridge/action"
 	"github.com/sebrandon1/skylight-bridge/config"
@@ -28,8 +29,9 @@ type RuleInfo struct {
 
 // Engine matches events against rules and dispatches actions.
 type Engine struct {
-	rules  []compiledRule
-	logger *slog.Logger
+	rules          []compiledRule
+	logger         *slog.Logger
+	actionFailures atomic.Int64
 }
 
 // NewEngine compiles rule configs into an Engine.
@@ -72,6 +74,7 @@ func (e *Engine) HandleEvent(ctx context.Context, event engine.Event) {
 		}
 		for _, a := range r.actions {
 			if err := a.Execute(ctx, event); err != nil {
+				e.actionFailures.Add(1)
 				e.logger.Error("action failed",
 					slog.String("rule", r.name),
 					slog.String("error", err.Error()),
@@ -94,6 +97,9 @@ func (e *Engine) GetRules() []RuleInfo {
 	}
 	return out
 }
+
+// ActionFailures returns the cumulative count of action execution errors.
+func (e *Engine) ActionFailures() int64 { return e.actionFailures.Load() }
 
 func matchFilters(filters map[string]string, data map[string]any) bool {
 	for key, want := range filters {

@@ -35,6 +35,9 @@ func NewHomeAssistantAction(config map[string]any) (Action, error) {
 		return nil, fmt.Errorf("homeassistant action requires 'url'")
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
+	if err := validateHTTPURL(baseURL); err != nil {
+		return nil, fmt.Errorf("homeassistant action: %w", err)
+	}
 
 	a := &HomeAssistantAction{
 		baseURL: baseURL,

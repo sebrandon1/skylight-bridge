@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/sebrandon1/skylight-bridge/engine"
 )
 
 // Config is the top-level configuration for skylight-bridge.
@@ -73,6 +75,7 @@ func parseDurationWithDefault(s string, def time.Duration) time.Duration {
 type ServerConfig struct {
 	Addr            string `yaml:"addr"`
 	EventBufferSize int    `yaml:"event_buffer_size"`
+	AuthToken       string `yaml:"auth_token"`
 }
 
 // LogConfig controls logging output.
@@ -134,6 +137,13 @@ func (c *Config) validate() error {
 	return c.validateRules()
 }
 
+var knownEventTypes = map[engine.EventType]bool{
+	engine.EventChoreCompleted:    true,
+	engine.EventChoreUncompleted:  true,
+	engine.EventChoreAllCompleted: true,
+	engine.EventRewardRedeemed:    true,
+}
+
 func (c *Config) validateRules() error {
 	for i, r := range c.Rules {
 		if r.Name == "" {
@@ -141,6 +151,9 @@ func (c *Config) validateRules() error {
 		}
 		if r.Event == "" {
 			return fmt.Errorf("rule %q: event is required", r.Name)
+		}
+		if !knownEventTypes[engine.EventType(r.Event)] {
+			return fmt.Errorf("rule %q: unknown event type %q", r.Name, r.Event)
 		}
 		if len(r.Actions) == 0 {
 			return fmt.Errorf("rule %q: at least one action is required", r.Name)

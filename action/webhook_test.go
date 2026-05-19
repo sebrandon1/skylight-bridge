@@ -110,3 +110,10 @@ func TestWebhookActionMissingURL(t *testing.T) {
 		t.Fatal("expected error for missing URL")
 	}
 }
+
+func TestWebhookActionInvalidURL(t *testing.T) {
+	_, err := NewWebhookAction(map[string]any{"url": "not-a-url"})
+	if err == nil {
+		t.Fatal("expected error for URL without scheme")
+	}
+}

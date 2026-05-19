@@ -31,11 +31,13 @@ func main() {
 		showVersion    bool
 		generateConfig bool
 		forceGenerate  bool
+		dryRun         bool
 	)
 	flag.StringVar(&configPath, "config", "config.yaml", "path to config file")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.BoolVar(&generateConfig, "generate-config", false, "interactively generate a config file")
 	flag.BoolVar(&forceGenerate, "force", false, "force regenerate config even if it exists")
+	flag.BoolVar(&dryRun, "dry-run", false, "validate config and log actions but do not execute them")
 	flag.Parse()
 
 	if showVersion {
@@ -78,17 +80,11 @@ func main() {
 		bufSize = 100
 	}
 	srv := server.New(bufSize)
+	srv.SetAuthToken(cfg.Server.AuthToken)
 	bus.Subscribe(srv.RecordEvent)
 
 	// Set up rules engine.
-	factories := map[string]action.Factory{
-		"log":           action.NewLogAction,
-		"webhook":       action.NewWebhookAction,
-		"homeassistant": action.NewHomeAssistantAction,
-		"discord":       action.NewDiscordAction,
-		"slack":         action.NewSlackAction,
-	}
-	rulesEngine, err := rules.NewEngine(cfg.Rules, factories, logger)
+	rulesEngine, err := rules.NewEngine(cfg.Rules, buildFactories(dryRun, logger), logger)
 	if err != nil {
 		logger.Error("failed to build rules engine", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -165,6 +161,23 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("HTTP server shutdown error", slog.String("error", err.Error()))
 	}
+}
+
+func buildFactories(dryRun bool, logger *slog.Logger) map[string]action.Factory {
+	factories := map[string]action.Factory{
+		"log":           action.NewLogAction,
+		"webhook":       action.NewWebhookAction,
+		"homeassistant": action.NewHomeAssistantAction,
+		"discord":       action.NewDiscordAction,
+		"slack":         action.NewSlackAction,
+	}
+	if dryRun {
+		logger.Info("dry-run mode: actions will be logged but not executed")
+		for k, f := range factories {
+			factories[k] = action.WrapDryRun(k, f, logger)
+		}
+	}
+	return factories
 }
 
 func setupLogger(cfg config.LogConfig) *slog.Logger {
