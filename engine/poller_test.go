@@ -163,12 +163,21 @@ func TestPollerPublishesEvents(t *testing.T) {
 	if len(received) == 0 {
 		t.Fatal("expected at least one event to be published")
 	}
-	e := <-received
-	if e.Type != EventChoreCompleted {
-		t.Errorf("event type = %q, want chore.completed", e.Type)
+
+	// Drain all events; order is non-deterministic since bus dispatches each in its own goroutine.
+	var choreCompleted *Event
+	for len(received) > 0 {
+		e := <-received
+		if e.Type == EventChoreCompleted {
+			ev := e
+			choreCompleted = &ev
+		}
 	}
-	if e.Data["assignee_name"] != "Alice" {
-		t.Errorf("assignee_name = %v, want Alice", e.Data["assignee_name"])
+	if choreCompleted == nil {
+		t.Fatal("expected chore.completed event among published events")
+	}
+	if choreCompleted.Data["assignee_name"] != "Alice" {
+		t.Errorf("assignee_name = %v, want Alice", choreCompleted.Data["assignee_name"])
 	}
 }
 
