@@ -11,6 +11,13 @@ import (
 	"github.com/sebrandon1/skylight-bridge/state"
 )
 
+// skylightClient is the subset of lib.Client methods used by the Poller.
+type skylightClient interface {
+	ListChores(frameID string, opts lib.ChoreListOptions) ([]lib.Chore, error)
+	ListRewards(frameID string) ([]lib.Reward, error)
+	ListCategories(frameID string) ([]lib.Category, error)
+}
+
 // PollerStats is a snapshot of poller runtime counters.
 type PollerStats struct {
 	TotalPolls   int64            `json:"total_polls"`
@@ -22,7 +29,7 @@ type PollerStats struct {
 // Poller periodically fetches chores and rewards from the Skylight API,
 // detects state changes via a Detector, and publishes events to a Bus.
 type Poller struct {
-	client   *lib.Client
+	client   skylightClient
 	frameID  string
 	interval time.Duration
 	detector *Detector
@@ -41,7 +48,7 @@ type Poller struct {
 }
 
 // NewPoller creates a Poller. It restores detector state from the store.
-func NewPoller(client *lib.Client, frameID string, interval time.Duration, store *state.Store, bus *Bus, logger *slog.Logger) *Poller {
+func NewPoller(client skylightClient, frameID string, interval time.Duration, store *state.Store, bus *Bus, logger *slog.Logger) *Poller {
 	detector := NewDetector()
 
 	// Restore previous detector state.
@@ -131,6 +138,11 @@ func (p *Poller) poll(ctx context.Context) {
 	}()
 	wg.Wait()
 
+	p.statsMu.Lock()
+	p.totalPolls++
+	p.lastPollAt = time.Now()
+	p.statsMu.Unlock()
+
 	// Check for context cancellation.
 	select {
 	case <-ctx.Done():
@@ -187,8 +199,6 @@ func (p *Poller) poll(ctx context.Context) {
 	)
 
 	p.statsMu.Lock()
-	p.totalPolls++
-	p.lastPollAt = time.Now()
 	p.pollErrors += apiErrors
 	for _, e := range allEvents {
 		p.eventsByType[e.Type]++
