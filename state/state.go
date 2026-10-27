@@ -1,13 +1,12 @@
 package state
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/sebrandon1/go-toolbox/jsonstore"
 )
 
 // State holds the persisted snapshot of detected resource states.
@@ -21,21 +20,25 @@ type State struct {
 
 // Store manages loading and saving state to a JSON file with atomic writes.
 type Store struct {
-	mu       sync.Mutex
-	filePath string
-	state    State
+	mu    sync.Mutex
+	store *jsonstore.Store[State]
+	state State
+}
+
+func newState() State {
+	return State{
+		Chores:            make(map[string]string),
+		Rewards:           make(map[string]bool),
+		AllCompletedFired: make(map[string]bool),
+		SyncedPhotoFiles:  make(map[string]bool),
+	}
 }
 
 // NewStore creates a Store backed by the given file path.
 func NewStore(filePath string) *Store {
 	return &Store{
-		filePath: filePath,
-		state: State{
-			Chores:            make(map[string]string),
-			Rewards:           make(map[string]bool),
-			AllCompletedFired: make(map[string]bool),
-			SyncedPhotoFiles:  make(map[string]bool),
-		},
+		store: jsonstore.New[State](filePath, jsonstore.WithPerm(0o600), jsonstore.WithIndent(true)),
+		state: newState(),
 	}
 }
 
@@ -44,16 +47,11 @@ func (s *Store) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	data, err := os.ReadFile(s.filePath)
+	st, err := s.store.Load()
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, jsonstore.ErrNotFound) {
 			return nil
 		}
-		return err
-	}
-
-	var st State
-	if err := json.Unmarshal(data, &st); err != nil {
 		return err
 	}
 
@@ -77,22 +75,9 @@ func (s *Store) Load() error {
 // Save writes the current state to disk atomically (write to temp, then rename).
 func (s *Store) Save() error {
 	s.mu.Lock()
-	data, err := json.MarshalIndent(s.state, "", "  ")
-	s.mu.Unlock()
-	if err != nil {
-		return err
-	}
+	defer s.mu.Unlock()
 
-	dir := filepath.Dir(s.filePath)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-
-	tmp := s.filePath + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, s.filePath)
+	return s.store.Save(s.state)
 }
 
 // GetState returns a copy of the current state.

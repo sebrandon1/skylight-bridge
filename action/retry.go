@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/sebrandon1/go-toolbox/retry"
+
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
 
@@ -24,22 +26,23 @@ func WrapRetry(inner Action, maxAttempts int, initialDelay time.Duration) Action
 }
 
 func (r *retryAction) Execute(ctx context.Context, event engine.Event) error {
-	delay := r.initialDelay
-	var err error
-	for attempt := range r.maxAttempts {
-		if attempt > 0 {
-			t := time.NewTimer(delay)
-			select {
-			case <-ctx.Done():
-				t.Stop()
-				return ctx.Err()
-			case <-t.C:
-			}
-			delay = min(delay*2, maxRetryDelay)
-		}
-		if err = r.inner.Execute(ctx, event); err == nil {
-			return nil
-		}
+	// Preserve the historical no-op behavior for a non-positive attempt budget.
+	if r.maxAttempts <= 0 {
+		return nil
 	}
-	return err
+
+	delay := r.initialDelay
+	if delay <= 0 {
+		// retry substitutes its 1s default for non-positive delays; use a
+		// negligible delay instead so a configured zero stays immediate.
+		delay = time.Nanosecond
+	}
+
+	return retry.Retry(ctx, func() error {
+		return r.inner.Execute(ctx, event)
+	},
+		retry.WithMaxRetries(r.maxAttempts-1),
+		retry.WithInitialDelay(delay),
+		retry.WithMaxDelay(maxRetryDelay),
+	)
 }

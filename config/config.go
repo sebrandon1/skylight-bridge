@@ -2,12 +2,10 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	"github.com/sebrandon1/go-toolbox/confkit"
+	"github.com/sebrandon1/go-toolbox/yamlx"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -61,11 +59,8 @@ func (p PollingConfig) ParsedInterval() time.Duration {
 }
 
 func parseDurationWithDefault(s string, def time.Duration) time.Duration {
-	if s == "" {
-		return def
-	}
-	d, err := time.ParseDuration(s)
-	if err != nil || d <= 0 {
+	d := confkit.DurationOrDefault(s, def)
+	if d <= 0 {
 		return def
 	}
 	return d
@@ -102,14 +97,9 @@ type ActionConfig struct {
 
 // Load reads and validates a config file from the given path.
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading config file: %w", err)
-	}
-
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config file: %w", err)
+	if err := yamlx.LoadFile(path, &cfg); err != nil {
+		return nil, fmt.Errorf("loading config file: %w", err)
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -121,22 +111,23 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) validate() error {
+	var errs []error
+
 	hasEmailAuth := c.Auth.Email != "" || c.Auth.Password != ""
 	hasTokenAuth := c.Auth.UserID != "" && c.Auth.Token != ""
 	hasRefreshAuth := c.Auth.RefreshToken != "" && c.Auth.DeviceFingerprint != ""
 	if hasEmailAuth && !hasTokenAuth && !hasRefreshAuth {
-		return fmt.Errorf("email+password auth is no longer supported by Skylight; use refresh_token+device_fingerprint instead")
+		errs = append(errs, fmt.Errorf("email+password auth is no longer supported by Skylight; use refresh_token+device_fingerprint instead"))
 	}
 	if !hasTokenAuth && !hasRefreshAuth {
-		return fmt.Errorf("auth requires either refresh_token+device_fingerprint or user_id+token")
+		errs = append(errs, fmt.Errorf("auth requires either refresh_token+device_fingerprint or user_id+token"))
 	}
 	if c.FrameID == "" {
-		return fmt.Errorf("frame_id is required")
+		errs = append(errs, fmt.Errorf("frame_id is required"))
 	}
-	if err := c.validatePhotoSync(); err != nil {
-		return err
-	}
-	return c.validateRules()
+	errs = append(errs, c.validatePhotoSync(), c.validateRules())
+
+	return confkit.ValidateJoin(errs...)
 }
 
 var knownEventTypes = map[engine.EventType]bool{
@@ -180,22 +171,11 @@ func (c *Config) validatePhotoSync() error {
 	return nil
 }
 
-func expandHomeDir(path string) string {
-	if !strings.HasPrefix(path, "~/") {
-		return path
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-	return filepath.Join(home, path[2:])
-}
-
 func (c *Config) applyDefaults() {
 	if c.StateFile == "" {
 		c.StateFile = "~/.skylight-bridge/state.json"
 	}
-	c.StateFile = expandHomeDir(c.StateFile)
+	c.StateFile = confkit.ExpandHome(c.StateFile)
 	if c.Server.Addr == "" {
 		c.Server.Addr = ":8080"
 	}
@@ -212,6 +192,6 @@ func (c *Config) applyDefaults() {
 		if ps.FrameID == "" {
 			ps.FrameID = c.FrameID
 		}
-		ps.WatchFolder = expandHomeDir(ps.WatchFolder)
+		ps.WatchFolder = confkit.ExpandHome(ps.WatchFolder)
 	}
 }

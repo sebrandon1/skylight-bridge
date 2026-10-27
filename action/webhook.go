@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"text/template"
+
+	"github.com/sebrandon1/go-toolbox/httpx"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -18,7 +19,7 @@ type WebhookAction struct {
 	method   string
 	headers  map[string]string
 	bodyTmpl *template.Template
-	client   *http.Client
+	client   *httpx.Client
 }
 
 // NewWebhookAction creates a WebhookAction from config. Supported keys:
@@ -53,7 +54,7 @@ func NewWebhookAction(config map[string]any) (Action, error) {
 		url:     url,
 		method:  method,
 		headers: headers,
-		client:  &http.Client{Timeout: parseTimeout(config)},
+		client:  httpx.NewClient(httpx.Options{Timeout: parseTimeout(config)}),
 	}
 
 	if tmplStr, ok := config["body_template"].(string); ok && tmplStr != "" {
@@ -97,13 +98,10 @@ func (a *WebhookAction) Execute(ctx context.Context, event engine.Event) error {
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("webhook request failed: %w", err)
+		return fmt.Errorf("webhook request failed: %w", httpx.AsNetworkError(err))
 	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("webhook returned status %d", resp.StatusCode)
+	if err := httpx.HandleResponse(resp, nil, 0); err != nil {
+		return fmt.Errorf("webhook request failed: %w", err)
 	}
 	return nil
 }
