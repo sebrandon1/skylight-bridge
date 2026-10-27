@@ -1,13 +1,12 @@
 package action
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
+
+	"github.com/sebrandon1/go-toolbox/httpx"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -19,7 +18,7 @@ type HomeAssistantAction struct {
 	service   string
 	entityID  string
 	webhookID string
-	client    *http.Client
+	client    *httpx.Client
 }
 
 // NewHomeAssistantAction creates a HomeAssistantAction from config. Supported keys:
@@ -40,7 +39,7 @@ func NewHomeAssistantAction(config map[string]any) (Action, error) {
 
 	a := &HomeAssistantAction{
 		baseURL: baseURL,
-		client:  &http.Client{Timeout: parseTimeout(config)},
+		client:  httpx.NewClient(httpx.Options{Timeout: parseTimeout(config)}),
 	}
 
 	if t, ok := config["token"].(string); ok {
@@ -84,29 +83,20 @@ func (a *HomeAssistantAction) callService(ctx context.Context, _ engine.Event) e
 		payload["entity_id"] = a.entityID
 	}
 
-	body, err := json.Marshal(payload)
+	req, err := a.client.NewRequest(ctx, http.MethodPost, url, payload)
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
 	if a.token != "" {
 		req.Header.Set("Authorization", "Bearer "+a.token)
 	}
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("HA service call failed: %w", err)
+		return fmt.Errorf("HA service call failed: %w", httpx.AsNetworkError(err))
 	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HA service call returned status %d", resp.StatusCode)
+	if err := httpx.HandleResponse(resp, nil, 0); err != nil {
+		return fmt.Errorf("HA service call failed: %w", err)
 	}
 	return nil
 }
@@ -114,26 +104,8 @@ func (a *HomeAssistantAction) callService(ctx context.Context, _ engine.Event) e
 func (a *HomeAssistantAction) callWebhook(ctx context.Context, event engine.Event) error {
 	url := fmt.Sprintf("%s/api/webhook/%s", a.baseURL, a.webhookID)
 
-	body, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := a.client.Do(req)
-	if err != nil {
+	if err := a.client.DoJSON(ctx, http.MethodPost, url, event, nil); err != nil {
 		return fmt.Errorf("HA webhook call failed: %w", err)
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("HA webhook returned status %d", resp.StatusCode)
 	}
 	return nil
 }

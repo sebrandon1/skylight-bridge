@@ -3,11 +3,11 @@ package action
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"text/template"
+
+	"github.com/sebrandon1/go-toolbox/httpx"
 
 	"github.com/sebrandon1/skylight-bridge/engine"
 )
@@ -17,7 +17,7 @@ import (
 type chatAction struct {
 	webhookURL string
 	msgTmpl    *template.Template
-	client     *http.Client
+	client     *httpx.Client
 	payloadKey string // e.g. "content" for Discord, "text" for Slack
 	name       string // used in error messages
 }
@@ -30,7 +30,7 @@ func newChatAction(config map[string]any, name, payloadKey string) (Action, erro
 
 	a := &chatAction{
 		webhookURL: url,
-		client:     &http.Client{Timeout: parseTimeout(config)},
+		client:     httpx.NewClient(httpx.Options{Timeout: parseTimeout(config)}),
 		payloadKey: payloadKey,
 		name:       name,
 	}
@@ -59,26 +59,9 @@ func (a *chatAction) Execute(ctx context.Context, event engine.Event) error {
 		content = formatDefaultMessage(event)
 	}
 
-	payload, err := json.Marshal(map[string]string{a.payloadKey: content})
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.webhookURL, bytes.NewReader(payload))
-	if err != nil {
-		return fmt.Errorf("creating %s request: %w", a.name, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := a.client.Do(req)
-	if err != nil {
+	payload := map[string]string{a.payloadKey: content}
+	if err := a.client.DoJSON(ctx, http.MethodPost, a.webhookURL, payload, nil); err != nil {
 		return fmt.Errorf("%s webhook failed: %w", a.name, err)
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%s webhook returned status %d", a.name, resp.StatusCode)
 	}
 	return nil
 }
