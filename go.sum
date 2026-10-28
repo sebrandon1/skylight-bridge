@@ -1,7 +1,7 @@
 github.com/sebrandon1/go-skylight v0.0.23 h1:wOLxpg+spS3YKfSj7uhIsrySOCyKFsAldKWmcUZhrPw=
 github.com/sebrandon1/go-skylight v0.0.23/go.mod h1:vfHFSOGAUtF0CK21WcXRQkzw9vHAmtO/HNH0f6V61C0=
-github.com/sebrandon1/go-toolbox v0.1.0 h1:LcUkONOD5KwUfOVxGcbZV2SsTqGBcc1pYEnkhmTQWUI=
-github.com/sebrandon1/go-toolbox v0.1.0/go.mod h1:3ELhcqDngqk0Sq/AAbYpQmJtaQm8nzKfMzoqBRPjWzQ=
+github.com/sebrandon1/go-toolbox v0.1.1 h1:6WbRNQsTytriI3ge7ZLFkvTDZhERnAjKfTHTHTko/R4=
+github.com/sebrandon1/go-toolbox v0.1.1/go.mod h1:3ELhcqDngqk0Sq/AAbYpQmJtaQm8nzKfMzoqBRPjWzQ=
 golang.org/x/time v0.15.0 h1:bbrp8t3bGUeFOx08pvsMYRTCVSMk89u4tKbNOZbp88U=
 golang.org/x/time v0.15.0/go.mod h1:Y4YMaQmXwGQZoFaVFk4YpCt4FLQMYKZe9oeV/f4MSno=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
