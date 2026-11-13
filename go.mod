@@ -1,6 +1,6 @@
 module github.com/sebrandon1/skylight-bridge
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/sebrandon1/go-skylight v0.0.23
